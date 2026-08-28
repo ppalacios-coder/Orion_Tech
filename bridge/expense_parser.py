@@ -18,7 +18,14 @@ from typing import Optional
 
 # --- currency -------------------------------------------------------------
 
-SYMBOLS = {"$": "USD", "€": "EUR", "£": "GBP", "¥": "JPY", "₹": "INR", "₱": "PHP"}
+SYMBOLS = {
+    "$": "USD", "€": "EUR", "£": "GBP", "¥": "JPY", "₹": "INR", "₱": "PHP",
+    "Q": "GTQ",     # Guatemalan quetzal, written Q1,234.56 or Q. 45.00
+}
+
+# Symbols that are letters need a word-boundary check so "REQ12345" is not read
+# as a currency, and may be followed by a full stop ("Q. 45.00").
+LETTER_SYMBOLS = {"Q"}
 
 ISO_CODES = [
     "EUR", "USD", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD", "SEK", "NOK", "DKK",
@@ -47,11 +54,15 @@ SPEND_KEYWORDS = [
     "was used", "transaction", "debit", "withdrawal", "compra", "cargo",
     "pago", "adeudo", "recibo", "domiciliado", "retirada", "gasto",
     "has realizado", "operacion", "operación",
+    # Guatemala / Banco Industrial wording
+    "consumo", "transaccion", "transacción", "retiro", "transferencia",
+    "debito", "débito", "rebajo", "cobro",
 ]
 
 CREDIT_KEYWORDS = [
     "refund", "refunded", "credited", "credit of", "reversal", "reversed",
     "abono", "abonado", "devolucion", "devolución", "ingreso", "reembolso",
+    "acreditamiento", "acreditado", "deposito", "depósito", "nota de credito",
 ]
 
 BALANCE_KEYWORDS = [
@@ -62,7 +73,7 @@ BALANCE_KEYWORDS = [
 # Merchant-introducing keywords, in priority order.
 MERCHANT_KEYWORDS = [
     "at", "en", "to", "from", "a favor de", "para", "comercio", "merchant",
-    "de", "in",
+    "de", "in", "a",
 ]
 
 # Text that ends a merchant name.
@@ -70,7 +81,7 @@ MERCHANT_TERMINATORS = re.compile(
     r"\s+(?:was|were|on|with|using|from|por|by|con|mediante|via|el\s+d[ií]a|"
     r"tarjeta|card|ha\s+sido|han\s+sido|has\s+been|have\s+been|"
     r"en\s+(?:tu|su|la|el|nuestra)|balance|saldo|available|disponible)\b"
-    r"|\.(?=\s|$)|[;\n]|\s+-\s+|\s*\|\s*",
+    r"|\.(?=\s|$)|[;,\n]|\s+-\s+|\s*\|\s*",
     re.IGNORECASE,
 )
 
@@ -83,9 +94,10 @@ MERCHANT_BLOCKLIST = {
 }
 
 IGNORE_RULES: list[tuple[str, re.Pattern]] = [
-    ("otp", re.compile(r"\b(?:c[oó]digo|code|otp|clave)\b[^\n]{0,40}?\b\d{4,8}\b", re.I)),
+    ("otp", re.compile(r"\b(?:c[oó]digo|code|otp|clave|token)\b[^\n]{0,40}?\b\d{4,8}\b", re.I)),
     ("otp", re.compile(r"\b(?:verification|verificaci[oó]n|autenticaci[oó]n|one[- ]time|un solo uso)\b", re.I)),
-    ("signin", re.compile(r"\b(?:sign[- ]?in|signed in|inicio de sesi[oó]n|log[- ]?in|logged in|acceso a tu cuenta)\b", re.I)),
+    ("signin", re.compile(r"\b(?:sign[- ]?in|signed in|inicio de sesi[oó]n|log[- ]?in|logged in|"
+                       r"acceso a tu cuenta|ingreso exitoso|nuevo dispositivo)\b", re.I)),
     ("statement", re.compile(r"\b(?:statement|extracto)\b[^\n]{0,30}\b(?:ready|available|disponible)\b", re.I)),
     ("promo", re.compile(r"\d+\s*%[^\n]{0,30}\b(?:descuento|off|cashback|dto)\b", re.I)),
     ("promo", re.compile(r"\b(?:oferta especial|promoci[oó]n|promotional)\b", re.I)),
@@ -95,18 +107,41 @@ IGNORE_RULES: list[tuple[str, re.Pattern]] = [
 # --- amount matching ------------------------------------------------------
 
 _ISO_ALT = "|".join(ISO_CODES)
-_SYM_ALT = "".join(re.escape(s) for s in SYMBOLS)
+_SYM_ALT = "".join(re.escape(s) for s in SYMBOLS if s not in LETTER_SYMBOLS)
+_LSYM_ALT = "|".join(re.escape(s) for s in sorted(LETTER_SYMBOLS))
 _NUM = r"\d[\d.,  ]*\d|\d"
 
+# A currency marker before the amount ("Q. 45.00", "$24.50") or after it
+# ("45,20 EUR"). Letter symbols carry a lookbehind so "REQ12345" is not a
+# currency, and allow the full stop Guatemalan alerts often use.
+_CUR_BEFORE = (
+    rf"(?:(?P<cur1>[{_SYM_ALT}])"
+    rf"|(?<![^\W\d_])(?P<lsym1>{_LSYM_ALT})\.?"
+    rf"|(?<![A-Za-z])(?P<iso1>{_ISO_ALT})(?![A-Za-z]))"
+)
+_CUR_AFTER = (
+    rf"(?:(?P<cur2>[{_SYM_ALT}])"
+    rf"|(?<![^\W\d_])(?P<lsym2>{_LSYM_ALT})"
+    rf"|(?<![A-Za-z])(?P<iso2>{_ISO_ALT})(?![A-Za-z]))"
+)
+
 AMOUNT_RE = re.compile(
-    rf"(?:(?P<cur1>[{_SYM_ALT}])|(?<![A-Za-z])(?P<iso1>{_ISO_ALT})(?![A-Za-z]))\s*(?P<amt1>{_NUM})"
-    rf"|(?P<amt2>{_NUM})\s*(?:(?P<cur2>[{_SYM_ALT}])|(?<![A-Za-z])(?P<iso2>{_ISO_ALT})(?![A-Za-z]))",
+    rf"{_CUR_BEFORE}\s*(?P<amt1>{_NUM})|(?P<amt2>{_NUM})\s*{_CUR_AFTER}",
+    re.IGNORECASE,
+)
+
+# Prefer digits that are explicitly a card's, so an account number in the same
+# alert ("cuenta *4567, tarjeta terminación 1234") is not mistaken for one.
+CARD_CONTEXT_RE = re.compile(
+    r"(?:tarjeta|card)[^\n]{0,25}?"
+    r"(?:terminaci[oó]n(?:\s+en)?|terminada\s+en|termina\s+en|acabada\s+en|final|"
+    r"ending(?:\s+in|\s+with)?|\*+|x{2,}|•{2,})\s*(\d{4})\b",
     re.IGNORECASE,
 )
 
 CARD_RE = re.compile(
-    r"(?:ending(?:\s+in)?|terminada\s+en|termina\s+en|acabada\s+en|final|ending\s+with|"
-    r"\*+|x{2,}|X{2,}|•{2,})\s*(\d{4})\b",
+    r"(?:ending(?:\s+in|\s+with)?|terminaci[oó]n(?:\s+en)?|terminada\s+en|termina\s+en|"
+    r"acabada\s+en|final|\*+|x{2,}|•{2,})\s*(\d{4})\b",
     re.IGNORECASE,
 )
 
@@ -156,12 +191,12 @@ def _find_amounts(text: str, default_currency: str) -> list[AmountCandidate]:
     out: list[AmountCandidate] = []
     lowered = text.lower()
     for m in AMOUNT_RE.finditer(text):
-        sym = m.group("cur1") or m.group("cur2")
+        sym = m.group("cur1") or m.group("cur2") or m.group("lsym1") or m.group("lsym2")
         iso = m.group("iso1") or m.group("iso2")
         raw = m.group("amt1") if m.group("amt1") is not None else m.group("amt2")
         if raw is None:
             continue
-        currency = SYMBOLS.get(sym) if sym else (iso.upper() if iso else None)
+        currency = SYMBOLS.get(sym.upper()) if sym else (iso.upper() if iso else None)
         value = _normalize_amount(raw, currency)
         if value is None:
             continue
@@ -242,7 +277,7 @@ def parse(
     text: str,
     source: Optional[str] = None,
     received_at: Optional[datetime] = None,
-    default_currency: str = "EUR",
+    default_currency: str = "GTQ",
 ) -> ParsedExpense:
     received_at = received_at or datetime.now(timezone.utc).astimezone()
     raw = text.strip()
@@ -276,7 +311,7 @@ def parse(
         return result
 
     merchant, via_keyword = _find_merchant(raw, best.end)
-    card_match = CARD_RE.search(raw)
+    card_match = CARD_CONTEXT_RE.search(raw) or CARD_RE.search(raw)
 
     result.kind = "credit" if has_credit else "expense"
     result.amount = best.value

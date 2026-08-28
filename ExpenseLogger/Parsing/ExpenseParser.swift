@@ -11,7 +11,13 @@ enum ExpenseParser {
 
     static let symbols: [String: String] = [
         "$": "USD", "€": "EUR", "£": "GBP", "¥": "JPY", "₹": "INR", "₱": "PHP",
+        "Q": "GTQ",     // Guatemalan quetzal, written Q1,234.56 or Q. 45.00
     ]
+
+    /// Symbols that are letters need a word-boundary check so "REQ12345" is not
+    /// read as a currency, and may be followed by a full stop ("Q. 45.00").
+    /// GTQ groups with "," and so is deliberately absent from `commaDecimal`.
+    static let letterSymbols: Set<String> = ["Q"]
 
     static let isoCodes = [
         "EUR", "USD", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD", "SEK", "NOK", "DKK",
@@ -38,11 +44,15 @@ enum ExpenseParser {
         "was used", "transaction", "debit", "withdrawal", "compra", "cargo",
         "pago", "adeudo", "recibo", "domiciliado", "retirada", "gasto",
         "has realizado", "operacion", "operación",
+        // Guatemala / Banco Industrial wording
+        "consumo", "transaccion", "transacción", "retiro", "transferencia",
+        "debito", "débito", "rebajo", "cobro",
     ]
 
     static let creditKeywords = [
         "refund", "refunded", "credited", "credit of", "reversal", "reversed",
         "abono", "abonado", "devolucion", "devolución", "ingreso", "reembolso",
+        "acreditamiento", "acreditado", "deposito", "depósito", "nota de credito",
     ]
 
     static let balanceKeywords = [
@@ -53,7 +63,7 @@ enum ExpenseParser {
     /// Merchant-introducing words, most specific first.
     static let merchantKeywords = [
         "at", "en", "to", "from", "a favor de", "para", "comercio", "merchant",
-        "de", "in",
+        "de", "in", "a",
     ]
 
     static let merchantBlocklist: Set<String> = [
@@ -69,32 +79,52 @@ enum ExpenseParser {
         #"\s+(?:was|were|on|with|using|from|por|by|con|mediante|via|el\s+d[ií]a|"# +
         #"tarjeta|card|ha\s+sido|han\s+sido|has\s+been|have\s+been|"# +
         #"en\s+(?:tu|su|la|el|nuestra)|balance|saldo|available|disponible)\b"# +
-        #"|\.(?=\s|$)|[;\n]|\s+-\s+|\s*\|\s*"#
+        #"|\.(?=\s|$)|[;,\n]|\s+-\s+|\s*\|\s*"#
     )
 
     static let ignoreRules: [(reason: String, rule: Rx)] = [
-        ("otp", Rx(#"\b(?:c[oó]digo|code|otp|clave)\b[^\n]{0,40}?\b\d{4,8}\b"#)),
+        ("otp", Rx(#"\b(?:c[oó]digo|code|otp|clave|token)\b[^\n]{0,40}?\b\d{4,8}\b"#)),
         ("otp", Rx(#"\b(?:verification|verificaci[oó]n|autenticaci[oó]n|one[- ]time|un solo uso)\b"#)),
-        ("signin", Rx(#"\b(?:sign[- ]?in|signed in|inicio de sesi[oó]n|log[- ]?in|logged in|acceso a tu cuenta)\b"#)),
+        ("signin", Rx(#"\b(?:sign[- ]?in|signed in|inicio de sesi[oó]n|log[- ]?in|logged in|"# +
+                      #"acceso a tu cuenta|ingreso exitoso|nuevo dispositivo)\b"#)),
         ("statement", Rx(#"\b(?:statement|extracto)\b[^\n]{0,30}\b(?:ready|available|disponible)\b"#)),
         ("promo", Rx(#"\d+\s*%[^\n]{0,30}\b(?:descuento|off|cashback|dto)\b"#)),
         ("promo", Rx(#"\b(?:oferta especial|promoci[oó]n|promotional)\b"#)),
         ("security", Rx(#"\b(?:password|contrase[nñ]a|pin)\b[^\n]{0,30}\b(?:changed|updated|cambiad|actualizad)"#)),
     ]
 
+    /// Digits introduced by the word "card"/"tarjeta", so an account number in
+    /// the same alert ("cuenta *4567, tarjeta terminación 1234") is not taken.
+    static let cardContextRegex = Rx(
+        #"(?:tarjeta|card)[^\n]{0,25}?"# +
+        #"(?:terminaci[oó]n(?:\s+en)?|terminada\s+en|termina\s+en|acabada\s+en|final|"# +
+        #"ending(?:\s+in|\s+with)?|\*+|x{2,}|•{2,})\s*(\d{4})\b"#
+    )
+
     static let cardRegex = Rx(
-        #"(?:ending(?:\s+in|\s+with)?|terminada\s+en|termina\s+en|acabada\s+en|final|"# +
-        #"\*+|x{2,}|•{2,})\s*(\d{4})\b"#
+        #"(?:ending(?:\s+in|\s+with)?|terminaci[oó]n(?:\s+en)?|terminada\s+en|termina\s+en|"# +
+        #"acabada\s+en|final|\*+|x{2,}|•{2,})\s*(\d{4})\b"#
     )
 
     static let amountRegex: Rx = {
-        let symbolClass = symbols.keys.map { NSRegularExpression.escapedPattern(for: $0) }.joined()
+        let symbolClass = symbols.keys
+            .filter { !letterSymbols.contains($0) }
+            .map { NSRegularExpression.escapedPattern(for: $0) }
+            .joined()
+        let letterAlt = letterSymbols.sorted()
+            .map { NSRegularExpression.escapedPattern(for: $0) }
+            .joined(separator: "|")
         let isoAlt = isoCodes.joined(separator: "|")
         let number = #"\d[\d.,  ]*\d|\d"#
-        return Rx(
-            "(?:(?<cur1>[\(symbolClass)])|(?<!\\p{L})(?<iso1>\(isoAlt))(?!\\p{L}))\\s*(?<amt1>\(number))" +
-            "|(?<amt2>\(number))\\s*(?:(?<cur2>[\(symbolClass)])|(?<!\\p{L})(?<iso2>\(isoAlt))(?!\\p{L}))"
-        )
+        // A currency marker before the amount ("Q. 45.00", "$24.50") or after
+        // it ("45,20 EUR").
+        let before = "(?:(?<cur1>[\(symbolClass)])"
+            + "|(?<!\\p{L})(?<lsym1>\(letterAlt))\\.?"
+            + "|(?<!\\p{L})(?<iso1>\(isoAlt))(?!\\p{L}))"
+        let after = "(?:(?<cur2>[\(symbolClass)])"
+            + "|(?<!\\p{L})(?<lsym2>\(letterAlt))"
+            + "|(?<!\\p{L})(?<iso2>\(isoAlt))(?!\\p{L}))"
+        return Rx("\(before)\\s*(?<amt1>\(number))|(?<amt2>\(number))\\s*\(after)")
     }()
 
     // MARK: - Amount normalisation
@@ -152,10 +182,11 @@ enum ExpenseParser {
     private static func findAmounts(in text: NSString, defaultCurrency: String) -> [AmountCandidate] {
         return amountRegex.matches(in: text).compactMap { match in
             let symbol = match.group("cur1") ?? match.group("cur2")
+                ?? match.group("lsym1") ?? match.group("lsym2")
             let iso = match.group("iso1") ?? match.group("iso2")
             guard let raw = match.group("amt1") ?? match.group("amt2") else { return nil }
 
-            let currency = symbol.flatMap { symbols[$0] } ?? iso?.uppercased()
+            let currency = symbol.flatMap { symbols[$0.uppercased()] } ?? iso?.uppercased()
             guard let value = normalizeAmount(raw, currency: currency) else { return nil }
 
             // Prefer amounts introduced by spending language; demote balances.
@@ -227,7 +258,7 @@ enum ExpenseParser {
         _ text: String,
         source: String? = nil,
         receivedAt: Date = Date(),
-        defaultCurrency: String = "EUR"
+        defaultCurrency: String = "GTQ"
     ) -> ParsedExpense {
         let raw = text.trimmingCharacters(in: .whitespacesAndNewlines)
         var result = ParsedExpense(kind: .unparsed, raw: raw, receivedAt: receivedAt, source: source)
@@ -269,7 +300,7 @@ enum ExpenseParser {
         result.amount = best.value
         result.currency = best.currency
         result.merchant = merchant.name
-        result.card = cardRegex.firstMatch(in: ns)?.group(1)
+        result.card = (cardContextRegex.firstMatch(in: ns) ?? cardRegex.firstMatch(in: ns))?.group(1)
 
         var confidence = 0.5
         if best.explicitCurrency { confidence += 0.2 }

@@ -21,11 +21,13 @@ Four routes below, best first.
 Most banks will text you on every card transaction. A Shortcuts personal
 automation can act on an incoming message without opening anything.
 
-1. Enable per-transaction SMS alerts in your bank's app or website.
+1. Enable per-transaction SMS alerts in your bank's app or website. For Banco
+   Industrial that is the alert/notification settings in Bi en Línea or the BI
+   app — the same place you would turn on transaction notifications.
 2. **Shortcuts ▸ Automation ▸ + ▸ Message.**
 3. Set **Sender** to your bank's number or short code. If the number varies, use
-   **Message Contains** with a word its alerts always include (`Compra`,
-   `spent`, `purchase`).
+   **Message Contains** with a word its alerts always include — for BI,
+   `Compra`, `Consumo` or `Q` works well.
 4. Choose **Run Immediately** and turn **Notify When Run** off.
 5. Add action **Log Expense from Text**.
 6. Tap the **Notification Text** field and choose the **Shortcut Input**
@@ -60,13 +62,13 @@ alerts with the same rules as the app, and appends them to a text file.
 python3 bridge/notification_bridge.py --list-apps
 
 # 2. Watch it — check what it would log before writing anything
-python3 bridge/notification_bridge.py --bundle-id com.yourbank.app --once --dry-run --verbose
+python3 bridge/notification_bridge.py --bundle-id com.bi.BancoIndustrial --once --dry-run --verbose
 
 # 3. Run it for real
 python3 bridge/notification_bridge.py \
-    --bundle-id com.yourbank.app \
+    --bundle-id com.bi.BancoIndustrial \
     --out ~/Library/Mobile\ Documents/com~apple~CloudDocs/expenses.txt \
-    --currency EUR
+    --currency GTQ
 ```
 
 Writing into iCloud Drive as above means the file syncs back to your phone.

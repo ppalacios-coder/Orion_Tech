@@ -32,6 +32,23 @@ Both are tested against `fixtures/samples.json`.
 Anything below the confidence threshold (Settings, default 0.50) goes to
 `expenses.review.txt` instead of the log. Nothing is silently discarded.
 
+## Guatemala specifics
+
+`Q` is treated as a currency symbol mapping to GTQ, with two rules that matter:
+
+- It is a **letter**, so it only counts as currency when not preceded by another
+  letter — `REQ12345` is not two hundred quetzales. It may be followed by a full
+  stop, because `Q. 45.00` is common.
+- GTQ is **not** in `commaDecimal`, so it uses US-style separators:
+  `Q1,234.56` is one thousand two hundred, and `Q1.500` would be one and a half.
+
+`US$25.00` resolves to USD rather than GTQ, because `$` matches ahead of any
+default, which keeps dollar-account alerts correct.
+
+Card digits are looked up twice: first by a pattern anchored on the word
+*tarjeta* or *card*, then by a looser one. That ordering is what stops
+`cuenta *4567, tarjeta terminación 1234` from logging the account number.
+
 ## Tuning it for your bank
 
 Use the **Test** tab first: paste a real notification and read the result and

@@ -24,9 +24,9 @@ struct SetupView: View {
                     subtitle: "Best option — fully on-device, no Mac needed",
                     reliability: "Reliable",
                     steps: [
-                        "Turn on SMS alerts in your bank's app or website.",
+                        "Turn on SMS alerts in your bank's app. For Banco Industrial, that is the alert settings in Bi en Línea.",
                         "Shortcuts ▸ Automation ▸ + ▸ Message.",
-                        "Set Sender to your bank, or Message Contains a word its alerts always use.",
+                        "Set Sender to your bank, or Message Contains a word its alerts always use (Compra, Consumo).",
                         "Choose Run Immediately and turn off Notify When Run.",
                         "Add action: Log Expense from Text, and set Notification Text to the Shortcut Input variable.",
                     ]

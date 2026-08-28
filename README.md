@@ -7,10 +7,10 @@ timestamp, then appended as one line to `expenses.txt` in Files ▸ On My iPhone
 Expense Logger.
 
 ```
-timestamp                  amount   currency  merchant          card  source  conf  raw
-2026-08-28T14:03:11+02:00  -45.20   EUR       MERCADONA         1234  BBVA    1.00  BBVA: Compra de 45,20 EUR…
-2026-08-28T18:22:04+02:00  -9.99    GBP       NETFLIX.COM             Monzo   0.90  Payment of £9.99 to NETFLIX…
-2026-08-29T10:15:44+02:00  30.00    USD       ZARA              1234  Chase   1.00  Refund of $30.00 from ZARA…
+timestamp                  amount    currency  merchant          card  source  conf  raw
+2026-08-28T09:03:11-06:00  -1234.56  GTQ       SUPER 24          1234  BI      1.00  Banco Industrial: Compra por Q1,234.56…
+2026-08-28T13:22:04-06:00  -45.00    GTQ       POLLO CAMPERO…          BI      0.90  BI: Consumo Q. 45.00 en POLLO CAMPERO…
+2026-08-29T10:15:44-06:00  1000.00   GTQ       DEVOLUCION COM…         BI      1.00  Acreditamiento por Q1,000.00 de…
 ```
 
 ## Read this first: what iOS will and will not do
@@ -61,6 +61,27 @@ bridge/                   macOS notification bridge + reference parser (Python)
 fixtures/samples.json     Parser corpus, shared by the Swift and Python tests
 docs/                     Trigger setup and parser tuning
 ```
+
+## Tuned for Banco Industrial (Guatemala)
+
+The parser is set up for BI alerts out of the box:
+
+- **Quetzales**, in the forms Guatemalan banks use: `Q1,234.56`, `Q. 45.00`,
+  `GTQ 350.00`. GTQ groups with a comma, so `Q1,234.56` reads as 1234.56, not 1.23.
+- **Dollar accounts** stay in dollars: `US$25.00` logs as USD, not GTQ.
+- **BI wording**: *compra, consumo, transacción, retiro, transferencia, débito,
+  rebajo, cobro*, and *acreditamiento / depósito* as money in.
+- **Card digits** from `tarjeta terminación 1234`, preferred over an account
+  number in the same alert (`cuenta *4567, tarjeta terminación 1234` → `1234`).
+- **Security alerts ignored**: `Su token de seguridad es …`, `Ingreso exitoso a
+  Bi en Línea`, `Su saldo disponible es …`.
+
+> These formats are built from Guatemalan banking conventions, not captured from
+> a live BI alert. Paste a real one into the **Test** tab first and confirm the
+> amount and merchant come out right — `docs/PARSING.md` covers adjusting a rule
+> if anything is off.
+
+Default currency is GTQ (Settings ▸ Parsing).
 
 ## The parser
 

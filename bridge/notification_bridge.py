@@ -17,8 +17,8 @@ Caveats, honestly stated:
 
 Usage:
     python3 notification_bridge.py --list-apps
-    python3 notification_bridge.py --bundle-id com.bank.app --out ~/expenses.txt
-    python3 notification_bridge.py --bundle-id com.bank.app --once --dry-run
+    python3 notification_bridge.py --bundle-id com.bi.BancoIndustrial --out ~/expenses.txt
+    python3 notification_bridge.py --bundle-id com.bi.BancoIndustrial --once --dry-run
 """
 
 from __future__ import annotations
@@ -205,7 +205,7 @@ def main() -> int:
                         help="Only log notifications from this app. Repeatable. Omit to watch everything.")
     parser.add_argument("--out", default="~/expenses.txt", help="Log file to append to.")
     parser.add_argument("--format", default="tsv", choices=["tsv", "csv", "jsonl", "plain"])
-    parser.add_argument("--currency", default="EUR", help="Assumed currency when a notification omits one.")
+    parser.add_argument("--currency", default="GTQ", help="Assumed currency when a notification omits one.")
     parser.add_argument("--interval", type=float, default=15.0, help="Seconds between polls.")
     parser.add_argument("--state", default=str(DEFAULT_STATE), help="Where to remember the last record seen.")
     parser.add_argument("--once", action="store_true", help="Poll a single time and exit.")

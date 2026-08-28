@@ -122,6 +122,50 @@ final class ExpenseParserTests: XCTestCase {
         XCTAssertEqual(parsed.reason, "empty")
     }
 
+    // MARK: - Guatemala / Banco Industrial
+
+    func testQuetzalSymbolIsRecognised() {
+        let parsed = ExpenseParser.parse("Compra por Q1,234.56 en SUPER 24")
+        XCTAssertEqual(parsed.currency, "GTQ")
+        XCTAssertEqual(parsed.amount, Decimal(string: "1234.56"), "GTQ groups with a comma")
+        XCTAssertEqual(parsed.merchant, "SUPER 24")
+    }
+
+    func testQuetzalWrittenWithAFullStop() {
+        let parsed = ExpenseParser.parse("BI: Consumo Q. 45.00 en POLLO CAMPERO ZONA 10")
+        XCTAssertEqual(parsed.currency, "GTQ")
+        XCTAssertEqual(parsed.amount, Decimal(string: "45.00"))
+    }
+
+    func testALetterSymbolNeedsAWordBoundary() {
+        // "Q" inside a word must not be read as a currency.
+        let parsed = ExpenseParser.parse("REQ12345 no es una transaccion de dinero")
+        XCTAssertNil(parsed.amount)
+    }
+
+    func testDollarAlertsFromAQuetzalBankStayInDollars() {
+        let parsed = ExpenseParser.parse("Banco Industrial: Compra por US$25.00 en AMAZON MKTP")
+        XCTAssertEqual(parsed.currency, "USD")
+        XCTAssertEqual(parsed.amount, Decimal(25))
+    }
+
+    func testCardDigitsArePreferredOverAccountDigits() {
+        let parsed = ExpenseParser.parse("Compra Q80.00 en LA TORRE, cuenta *4567, tarjeta terminación 1234")
+        XCTAssertEqual(parsed.card, "1234", "the account number must not be taken for the card")
+        XCTAssertEqual(parsed.merchant, "LA TORRE")
+    }
+
+    func testSecurityTokenIsNeverLogged() {
+        XCTAssertEqual(ExpenseParser.parse("Su token de seguridad es 483920").kind, .ignored)
+        XCTAssertEqual(ExpenseParser.parse("Ingreso exitoso a Bi en Línea desde un nuevo dispositivo").kind, .ignored)
+    }
+
+    func testAcreditamientoIsRecordedAsMoneyIn() {
+        let parsed = ExpenseParser.parse("Acreditamiento por Q1,000.00 de DEVOLUCION COMERCIO")
+        XCTAssertEqual(parsed.kind, .credit)
+        XCTAssertEqual(parsed.signedAmount, Decimal(1000))
+    }
+
     func testDedupeKeyIsStableForIdenticalTextAndDiffersOtherwise() {
         let first = ExpenseParser.parse("You spent $8.00 at LIDL", receivedAt: Self.receivedAt)
         let second = ExpenseParser.parse("You spent $8.00 at LIDL", receivedAt: Self.receivedAt.addingTimeInterval(30))

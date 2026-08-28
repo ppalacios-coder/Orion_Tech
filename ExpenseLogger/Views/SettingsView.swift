@@ -5,7 +5,7 @@ struct SettingsView: View {
 
     @AppStorage(AppSettings.Key.fileName) private var fileName = "expenses.txt"
     @AppStorage(AppSettings.Key.format) private var format = LogFormat.tsv.rawValue
-    @AppStorage(AppSettings.Key.defaultCurrency) private var defaultCurrency = "EUR"
+    @AppStorage(AppSettings.Key.defaultCurrency) private var defaultCurrency = "GTQ"
     @AppStorage(AppSettings.Key.minimumConfidence) private var minimumConfidence = 0.5
     @AppStorage(AppSettings.Key.keepRejected) private var keepRejected = true
     @AppStorage(AppSettings.Key.dedupeWindow) private var dedupeWindow = 120.0

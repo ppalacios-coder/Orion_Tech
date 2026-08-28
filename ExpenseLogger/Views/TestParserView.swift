@@ -83,9 +83,11 @@ struct TestParserView: View {
     }
 
     private static let examples = [
+        "Banco Industrial: Compra por Q1,234.56 en SUPER 24 con tarjeta terminación 1234",
+        "BI: Consumo Q. 45.00 en POLLO CAMPERO ZONA 10",
+        "Transacción realizada por GTQ 350.00 en FARMACIA GALENO",
+        "Banco Industrial: Compra por US$25.00 en AMAZON MKTP",
+        "Acreditamiento por Q1,000.00 de DEVOLUCION COMERCIO",
         "Chase: You spent $24.50 at STARBUCKS #4821 with card ending in 1234",
-        "BBVA: Compra de 45,20 EUR en MERCADONA con tarjeta *1234",
-        "Payment of £9.99 to NETFLIX.COM was made from your account",
-        "Refund of $30.00 from ZARA has been credited to your card ending 1234",
     ]
 }

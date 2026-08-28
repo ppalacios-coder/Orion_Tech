@@ -5,132 +5,351 @@
     {
       "id": "us-spent-at-card",
       "text": "Chase: You spent $24.50 at STARBUCKS #4821 with card ending in 1234",
-      "expect": { "kind": "expense", "amount": "24.50", "currency": "USD", "merchant": "STARBUCKS #4821", "card": "1234" }
+      "expect": {
+        "kind": "expense",
+        "amount": "24.50",
+        "currency": "USD",
+        "merchant": "STARBUCKS #4821",
+        "card": "1234"
+      }
     },
     {
       "id": "es-compra-tarjeta",
       "text": "BBVA: Compra de 45,20 EUR en MERCADONA con tarjeta *1234",
-      "expect": { "kind": "expense", "amount": "45.20", "currency": "EUR", "merchant": "MERCADONA", "card": "1234" }
+      "expect": {
+        "kind": "expense",
+        "amount": "45.20",
+        "currency": "EUR",
+        "merchant": "MERCADONA",
+        "card": "1234"
+      }
     },
     {
       "id": "es-symbol-suffix-dotted-merchant",
       "text": "Santander: Has realizado una compra de 12,99€ en NETFLIX.COM",
-      "expect": { "kind": "expense", "amount": "12.99", "currency": "EUR", "merchant": "NETFLIX.COM" }
+      "expect": {
+        "kind": "expense",
+        "amount": "12.99",
+        "currency": "EUR",
+        "merchant": "NETFLIX.COM"
+      }
     },
     {
       "id": "en-card-used-for",
       "text": "Card ending 4321 was used for €12,00 at AMAZON EU SARL",
-      "expect": { "kind": "expense", "amount": "12.00", "currency": "EUR", "merchant": "AMAZON EU SARL", "card": "4321" }
+      "expect": {
+        "kind": "expense",
+        "amount": "12.00",
+        "currency": "EUR",
+        "merchant": "AMAZON EU SARL",
+        "card": "4321"
+      }
     },
     {
       "id": "gbp-payment-to",
       "text": "Payment of £9.99 to NETFLIX.COM was made from your account",
-      "expect": { "kind": "expense", "amount": "9.99", "currency": "GBP", "merchant": "NETFLIX.COM" }
+      "expect": {
+        "kind": "expense",
+        "amount": "9.99",
+        "currency": "GBP",
+        "merchant": "NETFLIX.COM"
+      }
     },
     {
       "id": "us-thousands",
       "text": "Wells Fargo: A purchase of $1,234.56 at BEST BUY was posted to your account",
-      "expect": { "kind": "expense", "amount": "1234.56", "currency": "USD", "merchant": "BEST BUY" }
+      "expect": {
+        "kind": "expense",
+        "amount": "1234.56",
+        "currency": "USD",
+        "merchant": "BEST BUY"
+      }
     },
     {
       "id": "eu-thousands-decimal",
       "text": "Compra de 1.234,56 EUR en EL CORTE INGLES",
-      "expect": { "kind": "expense", "amount": "1234.56", "currency": "EUR", "merchant": "EL CORTE INGLES" }
+      "expect": {
+        "kind": "expense",
+        "amount": "1234.56",
+        "currency": "EUR",
+        "merchant": "EL CORTE INGLES"
+      }
     },
     {
       "id": "eu-thousands-no-decimals",
       "text": "Cargo de 1.500 EUR en NOTARIA LOPEZ",
-      "expect": { "kind": "expense", "amount": "1500", "currency": "EUR", "merchant": "NOTARIA LOPEZ" }
+      "expect": {
+        "kind": "expense",
+        "amount": "1500",
+        "currency": "EUR",
+        "merchant": "NOTARIA LOPEZ"
+      }
     },
     {
       "id": "us-thousands-no-decimals",
       "text": "$1,500 charged at APPLE STORE",
-      "expect": { "kind": "expense", "amount": "1500", "currency": "USD", "merchant": "APPLE STORE" }
+      "expect": {
+        "kind": "expense",
+        "amount": "1500",
+        "currency": "USD",
+        "merchant": "APPLE STORE"
+      }
     },
     {
       "id": "en-balance-distractor",
       "text": "You spent $12.00 at CVS. Available balance: $1,203.11",
-      "expect": { "kind": "expense", "amount": "12.00", "currency": "USD", "merchant": "CVS" }
+      "expect": {
+        "kind": "expense",
+        "amount": "12.00",
+        "currency": "USD",
+        "merchant": "CVS"
+      }
     },
     {
       "id": "es-balance-distractor",
       "text": "Compra 8,40€ en CAFE BAR LOLA. Saldo disponible 1.203,11€",
-      "expect": { "kind": "expense", "amount": "8.40", "currency": "EUR", "merchant": "CAFE BAR LOLA" }
+      "expect": {
+        "kind": "expense",
+        "amount": "8.40",
+        "currency": "EUR",
+        "merchant": "CAFE BAR LOLA"
+      }
     },
     {
       "id": "en-refund",
       "text": "Refund of $30.00 from ZARA has been credited to your card ending 1234",
-      "expect": { "kind": "credit", "amount": "30.00", "currency": "USD", "merchant": "ZARA", "card": "1234" }
+      "expect": {
+        "kind": "credit",
+        "amount": "30.00",
+        "currency": "USD",
+        "merchant": "ZARA",
+        "card": "1234"
+      }
     },
     {
       "id": "es-abono",
       "text": "Abono de 15,00 EUR de DEVOLUCION ZARA en tu tarjeta",
-      "expect": { "kind": "credit", "amount": "15.00", "currency": "EUR", "merchant": "DEVOLUCION ZARA" }
+      "expect": {
+        "kind": "credit",
+        "amount": "15.00",
+        "currency": "EUR",
+        "merchant": "DEVOLUCION ZARA"
+      }
     },
     {
       "id": "es-recibo-domiciliado",
       "text": "Recibo domiciliado de 62,10 EUR de IBERDROLA CLIENTES",
-      "expect": { "kind": "expense", "amount": "62.10", "currency": "EUR", "merchant": "IBERDROLA CLIENTES" }
+      "expect": {
+        "kind": "expense",
+        "amount": "62.10",
+        "currency": "EUR",
+        "merchant": "IBERDROLA CLIENTES"
+      }
     },
     {
       "id": "es-apple-pay-merchant-before-amount",
       "text": "Apple Pay: Compra en UBER * TRIP por 9,80 €",
-      "expect": { "kind": "expense", "amount": "9.80", "currency": "EUR", "merchant": "UBER * TRIP" }
+      "expect": {
+        "kind": "expense",
+        "amount": "9.80",
+        "currency": "EUR",
+        "merchant": "UBER * TRIP"
+      }
     },
     {
       "id": "es-cajero",
       "text": "Retirada de efectivo 100,00 EUR en CAJERO BBVA C/ MAYOR",
-      "expect": { "kind": "expense", "amount": "100.00", "currency": "EUR", "merchant": "CAJERO BBVA C/ MAYOR" }
+      "expect": {
+        "kind": "expense",
+        "amount": "100.00",
+        "currency": "EUR",
+        "merchant": "CAJERO BBVA C/ MAYOR"
+      }
     },
     {
       "id": "eu-n26-paid-at",
       "text": "N26: You paid €7.30 at LIDL",
-      "expect": { "kind": "expense", "amount": "7.30", "currency": "EUR", "merchant": "LIDL" }
+      "expect": {
+        "kind": "expense",
+        "amount": "7.30",
+        "currency": "EUR",
+        "merchant": "LIDL"
+      }
     },
     {
       "id": "multiline-revolut",
       "text": "Revolut\nYou spent $8.00 at BLUE BOTTLE COFFEE\nBalance: $102.34",
-      "expect": { "kind": "expense", "amount": "8.00", "currency": "USD", "merchant": "BLUE BOTTLE COFFEE" }
+      "expect": {
+        "kind": "expense",
+        "amount": "8.00",
+        "currency": "USD",
+        "merchant": "BLUE BOTTLE COFFEE"
+      }
     },
     {
       "id": "es-no-space-iso",
       "text": "Compra 24,50EUR en DIA",
-      "expect": { "kind": "expense", "amount": "24.50", "currency": "EUR", "merchant": "DIA" }
+      "expect": {
+        "kind": "expense",
+        "amount": "24.50",
+        "currency": "EUR",
+        "merchant": "DIA"
+      }
     },
     {
       "id": "gbp-monzo-paid-to",
       "text": "Monzo: £11.99 paid to SPOTIFY",
-      "expect": { "kind": "expense", "amount": "11.99", "currency": "GBP", "merchant": "SPOTIFY" }
+      "expect": {
+        "kind": "expense",
+        "amount": "11.99",
+        "currency": "GBP",
+        "merchant": "SPOTIFY"
+      }
     },
     {
       "id": "ignore-otp-es",
       "text": "Tu código de verificación es 483920. No lo compartas con nadie.",
-      "expect": { "kind": "ignored" }
+      "expect": {
+        "kind": "ignored"
+      }
     },
     {
       "id": "ignore-signin",
       "text": "New sign-in to your account from iPhone. If this wasn't you, contact us.",
-      "expect": { "kind": "ignored" }
+      "expect": {
+        "kind": "ignored"
+      }
     },
     {
       "id": "ignore-balance-only",
       "text": "Your available balance is $1,203.11",
-      "expect": { "kind": "ignored" }
+      "expect": {
+        "kind": "ignored"
+      }
     },
     {
       "id": "ignore-statement",
       "text": "Your August statement is ready to view",
-      "expect": { "kind": "ignored" }
+      "expect": {
+        "kind": "ignored"
+      }
     },
     {
       "id": "ignore-promo",
       "text": "¡Aprovecha! 20% de descuento en tu próxima compra con tarjeta",
-      "expect": { "kind": "ignored" }
+      "expect": {
+        "kind": "ignored"
+      }
     },
     {
       "id": "unparsed-no-currency",
       "text": "Movimiento registrado en tu cuenta",
-      "expect": { "kind": "unparsed" }
+      "expect": {
+        "kind": "unparsed"
+      }
+    },
+    {
+      "id": "bi-compra-quetzales",
+      "text": "Banco Industrial: Compra por Q1,234.56 en SUPER 24 con tarjeta terminación 1234",
+      "expect": {
+        "kind": "expense",
+        "amount": "1234.56",
+        "currency": "GTQ",
+        "merchant": "SUPER 24",
+        "card": "1234"
+      }
+    },
+    {
+      "id": "bi-consumo-q-punto",
+      "text": "BI: Consumo Q. 45.00 en POLLO CAMPERO ZONA 10",
+      "expect": {
+        "kind": "expense",
+        "amount": "45.00",
+        "currency": "GTQ",
+        "merchant": "POLLO CAMPERO ZONA 10"
+      }
+    },
+    {
+      "id": "bi-transaccion-iso",
+      "text": "Transacción realizada por GTQ 350.00 en FARMACIA GALENO",
+      "expect": {
+        "kind": "expense",
+        "amount": "350.00",
+        "currency": "GTQ",
+        "merchant": "FARMACIA GALENO"
+      }
+    },
+    {
+      "id": "bi-retiro-cajero",
+      "text": "Retiro en cajero por Q500.00 en AGENCIA ZONA 4",
+      "expect": {
+        "kind": "expense",
+        "amount": "500.00",
+        "currency": "GTQ",
+        "merchant": "AGENCIA ZONA 4"
+      }
+    },
+    {
+      "id": "bi-transferencia",
+      "text": "Transferencia enviada por Q750.00 a JUAN PEREZ",
+      "expect": {
+        "kind": "expense",
+        "amount": "750.00",
+        "currency": "GTQ",
+        "merchant": "JUAN PEREZ"
+      }
+    },
+    {
+      "id": "bi-dolares",
+      "text": "Banco Industrial: Compra por US$25.00 en AMAZON MKTP",
+      "expect": {
+        "kind": "expense",
+        "amount": "25.00",
+        "currency": "USD",
+        "merchant": "AMAZON MKTP"
+      }
+    },
+    {
+      "id": "bi-acreditamiento",
+      "text": "Acreditamiento por Q1,000.00 de DEVOLUCION COMERCIO",
+      "expect": {
+        "kind": "credit",
+        "amount": "1000.00",
+        "currency": "GTQ",
+        "merchant": "DEVOLUCION COMERCIO"
+      }
+    },
+    {
+      "id": "bi-cuenta-vs-tarjeta",
+      "text": "Compra Q80.00 en LA TORRE, cuenta *4567, tarjeta terminación 1234",
+      "expect": {
+        "kind": "expense",
+        "amount": "80.00",
+        "currency": "GTQ",
+        "merchant": "LA TORRE",
+        "card": "1234"
+      }
+    },
+    {
+      "id": "bi-ignore-token",
+      "text": "Su token de seguridad es 483920. No lo comparta.",
+      "expect": {
+        "kind": "ignored"
+      }
+    },
+    {
+      "id": "bi-ignore-ingreso",
+      "text": "Ingreso exitoso a Bi en Línea desde un nuevo dispositivo",
+      "expect": {
+        "kind": "ignored"
+      }
+    },
+    {
+      "id": "bi-ignore-saldo",
+      "text": "Su saldo disponible es Q3,450.20",
+      "expect": {
+        "kind": "ignored"
+      }
     }
   ]
 }

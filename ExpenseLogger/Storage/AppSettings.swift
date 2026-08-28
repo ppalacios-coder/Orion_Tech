@@ -15,7 +15,7 @@ enum AppSettings {
     static let defaults: [String: Any] = [
         Key.fileName: "expenses.txt",
         Key.format: LogFormat.tsv.rawValue,
-        Key.defaultCurrency: "EUR",
+        Key.defaultCurrency: "GTQ",
         Key.minimumConfidence: 0.5,
         Key.keepRejected: true,
         Key.dedupeWindow: 120.0,
@@ -39,7 +39,7 @@ enum AppSettings {
 
     /// Used when a notification names an amount but no currency.
     static var defaultCurrency: String {
-        UserDefaults.standard.string(forKey: Key.defaultCurrency) ?? "EUR"
+        UserDefaults.standard.string(forKey: Key.defaultCurrency) ?? "GTQ"
     }
 
     /// Parses below this confidence go to the review file instead of the log.
