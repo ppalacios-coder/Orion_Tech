@@ -14,6 +14,13 @@ what is and is not possible:
 
 Four routes below, best first.
 
+**If your card alerts come from Apple Wallet** (the notification is grouped
+under *Wallet* and shows the card art, as Banco Industrial's do), there is no
+SMS or email version of that notification to automate — route 3 is the one that
+captures it. Routes 1 and 2 still apply if your bank *also* sends transaction
+texts or emails, and they remain the more reliable choice, so it is worth
+turning those on at the bank as well.
+
 ---
 
 ## 1. Bank SMS alerts (recommended)
@@ -58,7 +65,8 @@ database. `bridge/notification_bridge.py` polls that database, parses banking
 alerts with the same rules as the app, and appends them to a text file.
 
 ```bash
-# 1. Find your bank app's bundle identifier
+# 1. Find the identifier. Card alerts posted through Apple Wallet come from
+#    Wallet (com.apple.Passbook), not from the bank's own app — confirm here.
 python3 bridge/notification_bridge.py --list-apps
 
 # 2. Watch it — check what it would log before writing anything

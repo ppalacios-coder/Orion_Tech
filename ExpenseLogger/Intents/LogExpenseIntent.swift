@@ -22,11 +22,16 @@ struct LogExpenseIntent: AppIntent {
     @Parameter(title: "Source", description: "Where it came from, e.g. your bank's name.")
     var source: String?
 
+    @Parameter(title: "Merchant",
+               description: "Overrides the merchant read from the text. Card alerts put it in the notification's subtitle.")
+    var merchant: String?
+
     @Parameter(title: "Received At", description: "Defaults to now.")
     var receivedAt: Date?
 
     static var parameterSummary: some ParameterSummary {
         Summary("Log expense from \(\.$text)") {
+            \.$merchant
             \.$source
             \.$receivedAt
         }
@@ -37,7 +42,8 @@ struct LogExpenseIntent: AppIntent {
             text,
             source: source,
             receivedAt: receivedAt ?? Date(),
-            defaultCurrency: AppSettings.defaultCurrency
+            defaultCurrency: AppSettings.defaultCurrency,
+            merchantHint: merchant
         )
         let outcome = try await ExpenseLog.shared.append(parsed)
 

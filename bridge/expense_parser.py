@@ -218,6 +218,70 @@ def _find_amounts(text: str, default_currency: str) -> list[AmountCandidate]:
     return out
 
 
+TIMESTAMP_RE = re.compile(
+    r"^(?:\d+\s*[mhdsw]\s+ago"
+    r"|\d{1,2}:\d{2}(?::\d{2})?\s*(?:[AaPp]\.?[Mm]\.?)?"
+    r"|(?:yesterday|today|ayer|hoy|mon|tue|wed|thu|fri|sat|sun|lun|mar|mi[eé]|jue|vie|s[aá]b|dom)"
+    r"[,.]?\s*\d{1,2}:\d{2}.*)$",
+    re.IGNORECASE,
+)
+
+
+def _is_amount_only(line: str) -> bool:
+    """True when a line is nothing but an amount, e.g. "GTQ 15.00"."""
+    stripped = line.strip()
+    if not stripped:
+        return False
+    match = AMOUNT_RE.search(stripped)
+    return match is not None and match.group(0).strip() == stripped
+
+
+def _is_timestamp(line: str) -> bool:
+    return TIMESTAMP_RE.match(line.strip()) is not None
+
+
+def _merchant_from_layout(text: str, amount_start: int) -> str | None:
+    """Read the merchant from a notification's shape rather than its wording.
+
+    Apple lays a push notification out as title / subtitle / body. Card issuers
+    use that as issuer / merchant / amount:
+
+        Banco Industrial
+        Parqueo Cayala
+        GTQ 15.00
+
+    There is no verb or preposition to key off, so when the amount sits alone on
+    its own line the merchant is the last meaningful line above it. Line 0 is
+    skipped because that is the app or issuer name.
+    """
+    lines = text.split("\n")
+    if len(lines) < 3:
+        return None
+
+    offset = 0
+    amount_line = None
+    for index, line in enumerate(lines):
+        if offset <= amount_start <= offset + len(line):
+            amount_line = index
+            break
+        offset += len(line) + 1
+
+    if not amount_line or not _is_amount_only(lines[amount_line]):
+        return None
+
+    for candidate in reversed(lines[1:amount_line]):
+        stripped = candidate.strip()
+        if not stripped or _is_amount_only(stripped) or _is_timestamp(stripped):
+            continue
+        # A line with spending wording is a sentence, not a merchant name;
+        # leave those to the keyword extractor.
+        lowered = stripped.lower()
+        if any(k in lowered for k in SPEND_KEYWORDS + CREDIT_KEYWORDS):
+            return None
+        return stripped[:60]
+    return None
+
+
 def _clean_merchant(raw: str) -> str:
     cut = MERCHANT_TERMINATORS.search(raw)
     if cut:
@@ -242,7 +306,10 @@ def _find_merchant(text: str, after: int) -> tuple[Optional[str], bool]:
         # Fallback: a run of capitalised/upper tokens (typical of card networks).
         caps = re.findall(r"\b[A-Z0-9][A-Z0-9&.'*/-]{2,}(?:\s+[A-Z0-9][A-Z0-9&.'*/-]*){0,3}", region)
         for c in caps:
-            if c.lower() in MERCHANT_BLOCKLIST or c.upper() in {u.upper() for u in ISO_CODES}:
+            if c.lower() in MERCHANT_BLOCKLIST:
+                continue
+            # Skip anything led by a currency code: that is the amount, not a shop.
+            if c.split()[0].upper() in {u.upper() for u in ISO_CODES}:
                 continue
             return _clean_merchant(c), False
     return None, False
@@ -278,6 +345,7 @@ def parse(
     source: Optional[str] = None,
     received_at: Optional[datetime] = None,
     default_currency: str = "GTQ",
+    merchant_hint: Optional[str] = None,
 ) -> ParsedExpense:
     received_at = received_at or datetime.now(timezone.utc).astimezone()
     raw = text.strip()
@@ -310,7 +378,16 @@ def parse(
         result.reason = "no-currency"
         return result
 
-    merchant, via_keyword = _find_merchant(raw, best.end)
+    # Merchant, in order of trustworthiness: an explicit hint (the notification's
+    # own subtitle), then the layout, then the wording.
+    merchant, via_keyword = None, False
+    if merchant_hint and merchant_hint.strip():
+        merchant, via_keyword = merchant_hint.strip()[:60], True
+    if merchant is None:
+        merchant = _merchant_from_layout(raw, best.start)
+        via_keyword = merchant is not None
+    if merchant is None:
+        merchant, via_keyword = _find_merchant(raw, best.end)
     card_match = CARD_CONTEXT_RE.search(raw) or CARD_RE.search(raw)
 
     result.kind = "credit" if has_credit else "expense"
@@ -330,6 +407,35 @@ def parse(
         confidence += 0.1
     result.confidence = min(1.0, round(confidence, 2))
     return result
+
+
+def parse_notification(
+    title: Optional[str] = None,
+    subtitle: Optional[str] = None,
+    body: Optional[str] = None,
+    source: Optional[str] = None,
+    received_at: Optional[datetime] = None,
+    default_currency: str = "GTQ",
+) -> ParsedExpense:
+    """Parse a notification whose parts are known separately.
+
+    Preferred over `parse` when the fields are available: card issuers put the
+    merchant in the subtitle, which is far more reliable than reading it out of
+    the text. Wallet alerts look like ("Banco Industrial", "Circus Coffee",
+    "GTQ 26.00").
+    """
+    text = "\n".join(part.strip() for part in (title, subtitle, body) if part and part.strip())
+    hint = subtitle.strip() if subtitle and subtitle.strip() else None
+    # A subtitle that is only the amount is not a merchant name.
+    if hint and _is_amount_only(hint):
+        hint = None
+    return parse(
+        text,
+        source=source,
+        received_at=received_at,
+        default_currency=default_currency,
+        merchant_hint=hint,
+    )
 
 
 # --- output formats -------------------------------------------------------

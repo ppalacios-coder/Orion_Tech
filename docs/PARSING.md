@@ -32,6 +32,33 @@ Both are tested against `fixtures/samples.json`.
 Anything below the confidence threshold (Settings, default 0.50) goes to
 `expenses.review.txt` instead of the log. Nothing is silently discarded.
 
+## Notifications with no wording
+
+Card issuers often post through Apple Wallet, which uses Apple's three-part
+layout and no sentence at all:
+
+```
+Banco Industrial      title    — the issuer
+Circus Coffee         subtitle — the merchant
+GTQ 26.00             body     — the amount
+```
+
+Two mechanisms cover this, tried before any keyword matching:
+
+1. **The subtitle**, when the parts are known separately. `parse_notification`
+   (Python) / `ExpenseParser.parse(title:subtitle:body:)` (Swift) take it as the
+   merchant directly. The Mac bridge uses this path. A subtitle that is only an
+   amount is ignored.
+2. **The layout**, when all you have is the text. If the amount occupies a line
+   by itself, the merchant is the last meaningful line above it; line 0 is
+   skipped as the issuer name, and blank, amount-only and timestamp lines
+   ("31m ago", "Yesterday, 6:16 PM") are passed over. A candidate line that
+   contains spending wording is left to the keyword extractor instead, so
+   sentence-style alerts are unaffected.
+
+If there is no subtitle at all, the result has no merchant rather than a wrong
+one — the issuer name is never used as a merchant.
+
 ## Guatemala specifics
 
 `Q` is treated as a currency symbol mapping to GTQ, with two rules that matter:

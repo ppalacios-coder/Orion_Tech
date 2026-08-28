@@ -15,6 +15,9 @@ struct SetupView: View {
                         Text("There is no public API for it — that is an Apple platform restriction, not a missing feature here. Instead, pick a trigger below that hands the text to this app.")
                             .font(.callout)
                             .foregroundStyle(.secondary)
+                        Text("Card alerts that arrive through Apple Wallet have no text-message version, so route 3 is the one that captures those. Turn on your bank's SMS alerts as well if it offers them — route 1 is more reliable.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
                     }
                     .padding(.vertical, 4)
                 }
@@ -50,6 +53,7 @@ struct SetupView: View {
                     reliability: "Best-effort",
                     steps: [
                         "Requires a Mac running iPhone Mirroring with notifications forwarded.",
+                        "Run --list-apps first: Wallet card alerts come from Wallet, not the bank's app.",
                         "Run bridge/notification_bridge.py from this repo on the Mac.",
                         "Grant the terminal Full Disk Access so it can read Notification Center.",
                         "It appends to the same text file, which you can keep in iCloud Drive.",

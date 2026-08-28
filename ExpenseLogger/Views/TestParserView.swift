@@ -82,12 +82,14 @@ struct TestParserView: View {
         }
     }
 
+    // The first two are the shape Banco Industrial card alerts arrive in:
+    // issuer, then merchant, then amount, each on its own line.
     private static let examples = [
+        "Banco Industrial\nCircus Coffee\nGTQ 26.00",
+        "Banco Industrial\nParqueo Cayala\nGTQ 15.00",
         "Banco Industrial: Compra por Q1,234.56 en SUPER 24 con tarjeta terminación 1234",
-        "BI: Consumo Q. 45.00 en POLLO CAMPERO ZONA 10",
         "Transacción realizada por GTQ 350.00 en FARMACIA GALENO",
         "Banco Industrial: Compra por US$25.00 en AMAZON MKTP",
         "Acreditamiento por Q1,000.00 de DEVOLUCION COMERCIO",
-        "Chase: You spent $24.50 at STARBUCKS #4821 with card ending in 1234",
     ]
 }

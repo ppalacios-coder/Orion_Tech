@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Shared parser corpus. Consumed by bridge/test_parser.py (Python) and ExpenseLoggerTests/ExpenseParserTests.swift (Swift). Keep both green when editing.",
+  "note": "Shared parser corpus. Consumed by bridge/test_parser.py (Python) and ExpenseLoggerTests/ExpenseParserTests.swift (Swift). Keep both green when editing. The wallet-* samples are transcribed from real Banco Industrial notifications.",
   "samples": [
     {
       "id": "us-spent-at-card",
@@ -350,6 +350,88 @@
       "expect": {
         "kind": "ignored"
       }
+    },
+    {
+      "id": "wallet-bi-parqueo",
+      "text": "Banco Industrial\nParqueo Cayala\nGTQ 15.00",
+      "expect": {
+        "kind": "expense",
+        "amount": "15.00",
+        "currency": "GTQ",
+        "merchant": "Parqueo Cayala"
+      }
+    },
+    {
+      "id": "wallet-bi-circus",
+      "text": "Banco Industrial\nCircus Coffee\nGTQ 26.00",
+      "expect": {
+        "kind": "expense",
+        "amount": "26.00",
+        "currency": "GTQ",
+        "merchant": "Circus Coffee"
+      }
+    },
+    {
+      "id": "wallet-bi-cafe-ufm",
+      "text": "Banco Industrial\nCafe UFM\nGTQ 44.00",
+      "expect": {
+        "kind": "expense",
+        "amount": "44.00",
+        "currency": "GTQ",
+        "merchant": "Cafe UFM"
+      }
+    },
+    {
+      "id": "wallet-bi-social-tickets",
+      "text": "Banco Industrial\nSocial Tickets\nGTQ 310.00",
+      "expect": {
+        "kind": "expense",
+        "amount": "310.00",
+        "currency": "GTQ",
+        "merchant": "Social Tickets"
+      }
+    },
+    {
+      "id": "wallet-bi-shell",
+      "text": "Banco Industrial\nShell\nGTQ 200.00",
+      "expect": {
+        "kind": "expense",
+        "amount": "200.00",
+        "currency": "GTQ",
+        "merchant": "Shell"
+      }
+    },
+    {
+      "id": "wallet-bi-amiparroquia",
+      "text": "Banco Industrial\nAmiparroquia\nGTQ 10.00",
+      "expect": {
+        "kind": "expense",
+        "amount": "10.00",
+        "currency": "GTQ",
+        "merchant": "Amiparroquia"
+      }
+    },
+    {
+      "id": "wallet-no-subtitle",
+      "text": "Banco Industrial\nGTQ 15.00",
+      "expect": {
+        "kind": "expense",
+        "amount": "15.00",
+        "currency": "GTQ",
+        "expectNoMerchant": true
+      },
+      "why": "With no subtitle there is no merchant; the issuer name must not be used as one."
+    },
+    {
+      "id": "wallet-with-timestamp-line",
+      "text": "Banco Industrial\n31m ago\nCircus Coffee\nGTQ 26.00",
+      "expect": {
+        "kind": "expense",
+        "amount": "26.00",
+        "currency": "GTQ",
+        "merchant": "Circus Coffee"
+      },
+      "why": "Pasted from Notification Center, timestamp line included."
     }
   ]
 }

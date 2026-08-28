@@ -30,8 +30,34 @@ class CorpusTests(unittest.TestCase):
                     self.assertEqual(got.currency, want["currency"], sample["id"])
                 if "merchant" in want:
                     self.assertEqual(got.merchant, want["merchant"], sample["id"])
+                if want.get("expectNoMerchant"):
+                    self.assertIsNone(got.merchant, sample["id"])
                 if "card" in want:
                     self.assertEqual(got.card, want["card"], sample["id"])
+
+
+class StructuredNotificationTests(unittest.TestCase):
+    """Wallet-style alerts: issuer / merchant / amount, with no wording to key off."""
+
+    def test_subtitle_is_used_as_the_merchant(self):
+        got = ep.parse_notification("Banco Industrial", "Circus Coffee", "GTQ 26.00", received_at=AT)
+        self.assertEqual(got.kind, "expense")
+        self.assertEqual(got.amount, Decimal("26.00"))
+        self.assertEqual(got.currency, "GTQ")
+        self.assertEqual(got.merchant, "Circus Coffee")
+
+    def test_a_subtitle_that_is_only_an_amount_is_not_a_merchant(self):
+        got = ep.parse_notification("Banco Industrial", "GTQ 26.00", None, received_at=AT)
+        self.assertNotEqual(got.merchant, "GTQ 26.00")
+
+    def test_missing_subtitle_leaves_no_merchant(self):
+        got = ep.parse_notification("Banco Industrial", None, "GTQ 15.00", received_at=AT)
+        self.assertEqual(got.amount, Decimal("15.00"))
+        self.assertIsNone(got.merchant)
+
+    def test_a_hint_never_overrides_a_sentence_style_alert(self):
+        got = ep.parse("Compra de 45,20 EUR en MERCADONA con tarjeta *1234", received_at=AT)
+        self.assertEqual(got.merchant, "MERCADONA")
 
 
 class FormatTests(unittest.TestCase):

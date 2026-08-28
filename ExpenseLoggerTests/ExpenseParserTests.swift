@@ -14,6 +14,7 @@ final class ExpenseParserTests: XCTestCase {
                 let currency: String?
                 let merchant: String?
                 let card: String?
+                let expectNoMerchant: Bool?
             }
             let id: String
             let text: String
@@ -62,6 +63,9 @@ final class ExpenseParserTests: XCTestCase {
             }
             if let card = expected.card {
                 XCTAssertEqual(parsed.card, card, sample.id)
+            }
+            if expected.expectNoMerchant == true {
+                XCTAssertNil(parsed.merchant, sample.id)
             }
         }
     }
@@ -164,6 +168,54 @@ final class ExpenseParserTests: XCTestCase {
         let parsed = ExpenseParser.parse("Acreditamiento por Q1,000.00 de DEVOLUCION COMERCIO")
         XCTAssertEqual(parsed.kind, .credit)
         XCTAssertEqual(parsed.signedAmount, Decimal(1000))
+    }
+
+    // MARK: - Wallet-style card alerts (issuer / merchant / amount)
+
+    func testSubtitleIsUsedAsTheMerchant() {
+        let parsed = ExpenseParser.parse(title: "Banco Industrial", subtitle: "Circus Coffee", body: "GTQ 26.00")
+        XCTAssertEqual(parsed.kind, .expense)
+        XCTAssertEqual(parsed.amount, Decimal(26))
+        XCTAssertEqual(parsed.currency, "GTQ")
+        XCTAssertEqual(parsed.merchant, "Circus Coffee")
+    }
+
+    func testLayoutGivesTheMerchantWhenThereIsNoWordingToKeyOff() {
+        let parsed = ExpenseParser.parse("Banco Industrial\nParqueo Cayala\nGTQ 15.00")
+        XCTAssertEqual(parsed.merchant, "Parqueo Cayala")
+        XCTAssertEqual(parsed.amount, Decimal(15))
+    }
+
+    func testAmountIsNeverMistakenForTheMerchant() {
+        let parsed = ExpenseParser.parse("Banco Industrial\nSocial Tickets\nGTQ 310.00")
+        XCTAssertEqual(parsed.merchant, "Social Tickets")
+        XCTAssertNotEqual(parsed.merchant, "GTQ 310.00")
+    }
+
+    func testMixedCaseMerchantSurvives() {
+        // The all-caps fallback used to reduce "Cafe UFM" to "UFM".
+        XCTAssertEqual(ExpenseParser.parse("Banco Industrial\nCafe UFM\nGTQ 44.00").merchant, "Cafe UFM")
+    }
+
+    func testIssuerNameIsNotUsedAsAMerchant() {
+        let parsed = ExpenseParser.parse("Banco Industrial\nGTQ 15.00")
+        XCTAssertEqual(parsed.amount, Decimal(15))
+        XCTAssertNil(parsed.merchant, "with no subtitle there is no merchant")
+    }
+
+    func testATimestampLineIsSkipped() {
+        let parsed = ExpenseParser.parse("Banco Industrial\n31m ago\nCircus Coffee\nGTQ 26.00")
+        XCTAssertEqual(parsed.merchant, "Circus Coffee")
+    }
+
+    func testASubtitleThatIsOnlyAnAmountIsNotAMerchant() {
+        let parsed = ExpenseParser.parse(title: "Banco Industrial", subtitle: "GTQ 26.00", body: nil)
+        XCTAssertNotEqual(parsed.merchant, "GTQ 26.00")
+    }
+
+    func testSentenceStyleAlertsStillUseTheirWording() {
+        let parsed = ExpenseParser.parse("Compra de 45,20 EUR en MERCADONA con tarjeta *1234")
+        XCTAssertEqual(parsed.merchant, "MERCADONA")
     }
 
     func testDedupeKeyIsStableForIdenticalTextAndDiffersOtherwise() {

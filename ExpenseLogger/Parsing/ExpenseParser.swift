@@ -214,6 +214,69 @@ enum ExpenseParser {
 
     // MARK: - Merchant
 
+    static let timestampRegex = Rx(
+        #"^(?:\d+\s*[mhdsw]\s+ago"# +
+        #"|\d{1,2}:\d{2}(?::\d{2})?\s*(?:[AaPp]\.?[Mm]\.?)?"# +
+        #"|(?:yesterday|today|ayer|hoy|mon|tue|wed|thu|fri|sat|sun|lun|mar|mi[eé]|jue|vie|s[aá]b|dom)"# +
+        #"[,.]?\s*\d{1,2}:\d{2}.*)$"#
+    )
+
+    /// True when a line is nothing but an amount, e.g. "GTQ 15.00".
+    static func isAmountOnly(_ line: String) -> Bool {
+        let stripped = line.trimmingCharacters(in: .whitespaces)
+        guard !stripped.isEmpty,
+              let match = amountRegex.firstMatch(in: stripped as NSString),
+              let matched = match.group(0)
+        else { return false }
+        return matched.trimmingCharacters(in: .whitespaces) == stripped
+    }
+
+    static func isTimestamp(_ line: String) -> Bool {
+        timestampRegex.containsMatch(in: line.trimmingCharacters(in: .whitespaces) as NSString)
+    }
+
+    /// Reads the merchant from a notification's shape rather than its wording.
+    ///
+    /// Apple lays a push notification out as title / subtitle / body. Card
+    /// issuers use that as issuer / merchant / amount:
+    ///
+    ///     Banco Industrial
+    ///     Parqueo Cayala
+    ///     GTQ 15.00
+    ///
+    /// There is no verb or preposition to key off, so when the amount sits alone
+    /// on its own line the merchant is the last meaningful line above it. Line 0
+    /// is skipped because that is the app or issuer name.
+    static func merchantFromLayout(_ text: String, amountStart: Int) -> String? {
+        let lines = text.components(separatedBy: "\n")
+        guard lines.count >= 3 else { return nil }
+
+        var offset = 0
+        var amountLine: Int?
+        for (index, line) in lines.enumerated() {
+            let length = (line as NSString).length
+            if offset <= amountStart, amountStart <= offset + length {
+                amountLine = index
+                break
+            }
+            offset += length + 1
+        }
+
+        guard let amountLine, amountLine > 0, isAmountOnly(lines[amountLine]) else { return nil }
+
+        for candidate in lines[1..<amountLine].reversed() {
+            let stripped = candidate.trimmingCharacters(in: .whitespaces)
+            if stripped.isEmpty || isAmountOnly(stripped) || isTimestamp(stripped) { continue }
+            // A line with spending wording is a sentence, not a merchant name;
+            // leave those to the keyword extractor.
+            let lowered = stripped.lowercased()
+            if spendKeywords.contains(where: lowered.contains) { return nil }
+            if creditKeywords.contains(where: lowered.contains) { return nil }
+            return String(stripped.prefix(60))
+        }
+        return nil
+    }
+
     static func cleanMerchant(_ raw: String) -> String {
         var text = raw
         if let cut = merchantTerminators.firstMatch(in: text as NSString) {
@@ -245,7 +308,9 @@ enum ExpenseParser {
             for match in caps.matches(in: region) {
                 guard let raw = match.group(0) else { continue }
                 if merchantBlocklist.contains(raw.lowercased()) { continue }
-                if isoCodes.contains(raw.uppercased()) { continue }
+                // Skip anything led by a currency code: that is the amount, not a shop.
+                let firstToken = raw.split(separator: " ").first.map(String.init) ?? raw
+                if isoCodes.contains(firstToken.uppercased()) { continue }
                 return (cleanMerchant(raw), false)
             }
         }
@@ -258,7 +323,8 @@ enum ExpenseParser {
         _ text: String,
         source: String? = nil,
         receivedAt: Date = Date(),
-        defaultCurrency: String = "GTQ"
+        defaultCurrency: String = "GTQ",
+        merchantHint: String? = nil
     ) -> ParsedExpense {
         let raw = text.trimmingCharacters(in: .whitespacesAndNewlines)
         var result = ParsedExpense(kind: .unparsed, raw: raw, receivedAt: receivedAt, source: source)
@@ -294,7 +360,16 @@ enum ExpenseParser {
             return result
         }
 
-        let merchant = findMerchant(in: ns, after: best.end)
+        // Merchant, in order of trustworthiness: an explicit hint (the
+        // notification's own subtitle), then the layout, then the wording.
+        var merchant: (name: String?, viaKeyword: Bool)
+        if let hint = merchantHint?.trimmingCharacters(in: .whitespacesAndNewlines), !hint.isEmpty {
+            merchant = (String(hint.prefix(60)), true)
+        } else if let fromLayout = merchantFromLayout(raw, amountStart: best.start) {
+            merchant = (fromLayout, true)
+        } else {
+            merchant = findMerchant(in: ns, after: best.end)
+        }
 
         result.kind = hasCredit ? .credit : .expense
         result.amount = best.value
@@ -310,5 +385,38 @@ enum ExpenseParser {
         result.confidence = min(1.0, (confidence * 100).rounded() / 100)
 
         return result
+    }
+
+    /// Parses a notification whose parts are known separately.
+    ///
+    /// Preferred over `parse` when the fields are available: card issuers put
+    /// the merchant in the subtitle, which is far more reliable than reading it
+    /// out of the text. Wallet alerts look like ("Banco Industrial",
+    /// "Circus Coffee", "GTQ 26.00").
+    static func parse(
+        title: String?,
+        subtitle: String?,
+        body: String?,
+        source: String? = nil,
+        receivedAt: Date = Date(),
+        defaultCurrency: String = "GTQ"
+    ) -> ParsedExpense {
+        let text = [title, subtitle, body]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+
+        var hint = subtitle?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let value = hint, value.isEmpty || isAmountOnly(value) {
+            hint = nil      // a subtitle that is only the amount is not a merchant
+        }
+
+        return parse(
+            text,
+            source: source,
+            receivedAt: receivedAt,
+            defaultCurrency: defaultCurrency,
+            merchantHint: hint
+        )
     }
 }

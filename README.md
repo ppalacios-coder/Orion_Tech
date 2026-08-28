@@ -7,10 +7,10 @@ timestamp, then appended as one line to `expenses.txt` in Files ▸ On My iPhone
 Expense Logger.
 
 ```
-timestamp                  amount    currency  merchant          card  source  conf  raw
-2026-08-28T09:03:11-06:00  -1234.56  GTQ       SUPER 24          1234  BI      1.00  Banco Industrial: Compra por Q1,234.56…
-2026-08-28T13:22:04-06:00  -45.00    GTQ       POLLO CAMPERO…          BI      0.90  BI: Consumo Q. 45.00 en POLLO CAMPERO…
-2026-08-29T10:15:44-06:00  1000.00   GTQ       DEVOLUCION COM…         BI      1.00  Acreditamiento por Q1,000.00 de…
+timestamp                  amount   currency  merchant        card  source  conf  raw
+2026-08-28T12:45:11-06:00  -15.00   GTQ       Parqueo Cayala        Wallet  0.90  Banco Industrial Parqueo Cayala GTQ 15.00
+2026-08-28T12:16:04-06:00  -26.00   GTQ       Circus Coffee         Wallet  0.90  Banco Industrial Circus Coffee GTQ 26.00
+2026-08-28T09:11:44-06:00  -44.00   GTQ       Cafe UFM              Wallet  0.90  Banco Industrial Cafe UFM GTQ 44.00
 ```
 
 ## Read this first: what iOS will and will not do
@@ -64,7 +64,28 @@ docs/                     Trigger setup and parser tuning
 
 ## Tuned for Banco Industrial (Guatemala)
 
-The parser is set up for BI alerts out of the box:
+BI card alerts arrive through **Apple Wallet**, in Apple's three-part layout —
+issuer, merchant, amount, each on its own line, with no sentence to read:
+
+```
+Banco Industrial
+Circus Coffee
+GTQ 26.00
+```
+
+There is no verb or preposition here, so the parser reads the **shape** instead
+of the wording: when the amount sits alone on its own line, the merchant is the
+last meaningful line above it, and the first line is skipped as the issuer name.
+When the parts are available separately — as they are to the Mac bridge — the
+subtitle is used directly, which is more reliable still.
+
+This matters for which trigger works. **Wallet alerts have no SMS or email
+equivalent**, so routes 1 and 2 only apply if BI *also* sends you per-transaction
+texts or emails (worth turning on — they are the most reliable option). For the
+Wallet notifications in particular, the Mac bridge is the route that captures
+them, and it watches Wallet rather than a BI app.
+
+The parser also handles BI's sentence-style alerts:
 
 - **Quetzales**, in the forms Guatemalan banks use: `Q1,234.56`, `Q. 45.00`,
   `GTQ 350.00`. GTQ groups with a comma, so `Q1,234.56` reads as 1234.56, not 1.23.
@@ -76,10 +97,10 @@ The parser is set up for BI alerts out of the box:
 - **Security alerts ignored**: `Su token de seguridad es …`, `Ingreso exitoso a
   Bi en Línea`, `Su saldo disponible es …`.
 
-> These formats are built from Guatemalan banking conventions, not captured from
-> a live BI alert. Paste a real one into the **Test** tab first and confirm the
-> amount and merchant come out right — `docs/PARSING.md` covers adjusting a rule
-> if anything is off.
+> The Wallet samples in `fixtures/samples.json` are transcribed from real BI
+> notifications. The sentence-style ones are built from Guatemalan banking
+> conventions and have not been confirmed against a live alert — if BI sends you
+> those too, paste one into the **Test** tab and check it.
 
 Default currency is GTQ (Settings ▸ Parsing).
 

@@ -17,8 +17,8 @@ Caveats, honestly stated:
 
 Usage:
     python3 notification_bridge.py --list-apps
-    python3 notification_bridge.py --bundle-id com.bi.BancoIndustrial --out ~/expenses.txt
-    python3 notification_bridge.py --bundle-id com.bi.BancoIndustrial --once --dry-run
+    python3 notification_bridge.py --bundle-id com.apple.Passbook --out ~/expenses.txt
+    python3 notification_bridge.py --bundle-id com.apple.Passbook --once --dry-run
 """
 
 from __future__ import annotations
@@ -85,17 +85,24 @@ def find_text(node, keys=("titl", "subt", "body")) -> dict:
     return found
 
 
-def decode_record(blob: bytes) -> tuple[str, str]:
-    """Return (title, body) for a record blob, best effort."""
+def decode_record(blob: bytes) -> tuple[str, str, str]:
+    """Return (title, subtitle, body) for a record blob, best effort.
+
+    The three are kept apart on purpose: card issuers put the merchant in the
+    subtitle, which the parser trusts ahead of anything it reads out of the text.
+    """
     if not blob:
-        return "", ""
+        return "", "", ""
     try:
         payload = plistlib.loads(blob)
     except Exception:
-        return "", ""
+        return "", "", ""
     text = find_text(payload)
-    title = " ".join(part for part in (text.get("titl"), text.get("subt")) if part)
-    return title.strip(), (text.get("body") or "").strip()
+    return (
+        (text.get("titl") or "").strip(),
+        (text.get("subt") or "").strip(),
+        (text.get("body") or "").strip(),
+    )
 
 
 def load_state(path: Path) -> dict:
@@ -169,13 +176,14 @@ def process_once(args, state: dict) -> int:
 
     for rec_id, identifier, blob, delivered in rows:
         state["last_rec_id"] = max(int(rec_id), int(state.get("last_rec_id", 0)))
-        title, body = decode_record(blob)
-        text = "\n".join(part for part in (title, body) if part)
-        if not text:
+        title, subtitle, body = decode_record(blob)
+        if not any((title, subtitle, body)):
             continue
 
-        parsed = ep.parse(
-            text,
+        parsed = ep.parse_notification(
+            title=title,
+            subtitle=subtitle,
+            body=body,
             source=identifier,
             received_at=apple_time(delivered).astimezone(),
             default_currency=args.currency,
@@ -183,7 +191,7 @@ def process_once(args, state: dict) -> int:
 
         if parsed.kind not in ("expense", "credit"):
             if args.verbose:
-                print(f"skip [{parsed.kind}:{parsed.reason}] {text[:70]!r}")
+                print(f"skip [{parsed.kind}:{parsed.reason}] {parsed.raw[:70]!r}")
             continue
 
         line = ep.format_line(parsed, args.format)
@@ -202,7 +210,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--db", help="Path to the Notification Center database (auto-detected by default).")
     parser.add_argument("--bundle-id", action="append", default=[],
-                        help="Only log notifications from this app. Repeatable. Omit to watch everything.")
+                        help="Only log notifications from this app. Repeatable. Omit to watch everything. "
+                             "Card alerts posted by Apple Wallet come from Wallet, not the bank's app — "
+                             "run --list-apps to see which identifier yours actually uses.")
     parser.add_argument("--out", default="~/expenses.txt", help="Log file to append to.")
     parser.add_argument("--format", default="tsv", choices=["tsv", "csv", "jsonl", "plain"])
     parser.add_argument("--currency", default="GTQ", help="Assumed currency when a notification omits one.")
