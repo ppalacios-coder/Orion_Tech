@@ -1,121 +1,108 @@
 # Start here
 
-This turns your Banco Industrial purchase alerts into a plain text file that
-fills itself in.
+This turns your Banco Industrial statement into a spending spreadsheet that
+lives in your Google Drive.
 
-**You only need Part A.** It takes about 20 minutes on your Mac and involves no
-programming. Part B is an optional iPhone app that shows the same file more
-nicely.
+**About 15 minutes the first time, then 2 minutes a month.** No programming.
 
-There is a friendlier illustrated version of this guide with tick-boxes — ask
-for the setup guide link if you do not have it.
+There is a friendlier version of this guide with tick-boxes — ask for the setup
+guide link if you do not have it.
 
 ---
 
-## Before you start
+## Why the statement and not the notifications
 
-All four must be true:
+The original plan was to catch each purchase notification as it happened. Three
+things ruled that out:
 
-- Your Mac runs **macOS 15 (Sequoia)** or newer — Apple menu ▸ About This Mac.
-- Your Mac has an **Apple chip** (M1/M2/M3/M4) or a T2 chip.
-- iPhone and Mac use the **same Apple Account**, with two-factor on.
-- You can find the **iPhone Mirroring** app in your Applications folder.
+- **iPhone apps cannot read other apps' notifications.** Apple does not allow
+  it. No app can, not just this one.
+- **A Mac can read them, but only while awake.** On a MacBook you carry, most
+  purchases would happen while it is shut.
+- **A half-complete expense file is worse than none**, because you would trust
+  it.
 
-If iPhone Mirroring is missing, stop — the rest will not work.
+Your statement is the bank's own record: every transaction, correct amounts,
+nothing missed. You trade instant for complete.
 
 ---
 
-## Part A — get it recording
+## Part A — import your first statement
 
-**1. Link your iPhone to your Mac.**
-Open **iPhone Mirroring** on the Mac and follow its setup. Say yes to
-notifications. Then check System Settings ▸ Notifications ▸ *Allow notifications
-from iPhone* is on. Confirm a real notification reaches the Mac before going on.
-
-**2. Download the files.**
-On the Mac, open
+**1. Download the files.** On the Mac, open
 <https://github.com/ppalacios-coder/Orion_Tech/tree/claude/iphone-expense-logging-app-yuiy8q>,
 click the green **Code** button, then **Download ZIP**. Unzip it and put the
 folder in Documents.
 
-**3. Double-click the setup file.**
-Inside the `bridge` folder, double-click **`Setup Expense Logger.command`**.
-A Terminal window opens and asks you questions.
+**2. Download your statement from Bi en Línea.** Find your card or account and
+look for **Movimientos** or **Estado de cuenta**. If it offers a format, choose
+**Excel or CSV**, not PDF. Grab several past months too — you can import them
+all and start with real history.
 
-If macOS refuses to open it, right-click the file ▸ **Open** ▸ **Open**.
+If PDF is the only option, stop and tell me. Send me one and I will say whether
+it can be read reliably.
 
-**4. Install developer tools if asked.**
-If it says Python is missing, click **Install** in the window that appears, wait,
-then double-click the setup file again.
+**3. Double-click the import file.** In the folder you unzipped, open the
+`importer` folder and double-click **`Import Statement.command`**.
 
-**5. Allow Terminal to read notifications.**
-If setup stops for this, it opens the right Settings page. Switch **Terminal**
-on in Full Disk Access. If Terminal is not listed: **+**, then Command-Shift-G,
-type `/System/Applications/Utilities`, pick Terminal. Quit Terminal
-(Command-Q), then run the setup file again.
+If macOS refuses to open it, right-click ▸ **Open** ▸ **Open**.
 
-**6. Answer three questions.**
-- Which app sends the alerts → pick **`com.apple.Passbook`** (Apple Wallet).
-- Where to save → it lists the cloud folders this Mac has. Pick the number
-  next to **Google Drive**.
-- It prints the purchases it *would* record. If they look right, type `y`.
+**4. Install developer tools if asked.** Click **Install**, wait, then
+double-click the import file again.
 
-If those preview lines look wrong, close the window and send them to me.
+**5. Answer two questions.**
+- Which file → type the number of your statement, or drag the file into the
+  window.
+- Where your expense file should live → pick the number next to **Google
+  Drive**. It remembers, so you are only asked once.
 
-**7. Allow Python too.**
-Setup prints a path like `/usr/bin/python3` and copies it. Add it to the same
-Full Disk Access list: **+**, Command-Shift-G, Command-V, Return, switch on.
+It then shows what it found — count, dates, totals, first few rows — **before
+writing anything**. Check the amounts against your statement. If they match,
+type `y`.
 
-**8. Check it.**
-Make a small purchase. Within ~15 seconds, open your Google Drive folder and
-`expenses.txt` should end with that purchase. It appears in Google Drive on the
-web and on your phone too, once Drive syncs it.
+**6. Open your file.** In your Google Drive folder, double-click
+`expenses.csv`. It opens in Numbers, Excel or Google Sheets.
 
-Done. It restarts by itself when the Mac turns on.
-
-To stop it later: double-click **`Stop Expense Logger.command`**. Your file is
-kept.
+Next month: download the new statement, double-click the same file. Anything
+already imported is skipped, so overlapping statements are safe.
 
 ---
 
-## What it cannot do
+## Worth knowing
 
-- Purchases made while the **Mac is asleep or off are missed**, and are not
-  caught up afterwards.
-- It reads an undocumented part of macOS, so a macOS update could break it.
-  If purchases stop appearing, check
-  `~/Library/Logs/expense-logger-bridge.log`.
+- It is only as current as your last import. Import mid-month if you want a
+  mid-month view — importing twice costs nothing.
+- Descriptions read the way the bank writes them. Tidying or categorising them
+  is easy to add — just ask.
+- Cash spending never appears, because the bank never sees it.
 
 ---
 
-## Part B — the optional iPhone app
+## Two things to skip
 
-Read this first: the app only *displays* the same file, more nicely, with
-totals and Siri. With a free Apple account **it stops working after 7 days**
-and must be reinstalled from the Mac. A paid developer account ($99/year)
-extends that to a year. If reading `expenses.txt` in the Files app is enough,
-you are finished.
+**The Mac notification watcher** (`bridge` folder) reads your Wallet alerts live,
+but only while the Mac is awake and connected to your iPhone. On a MacBook you
+carry, it would miss most purchases and leave you with a file you cannot trust.
+Do not install it. It becomes worth having if you ever have a desktop Mac that
+stays on.
 
-1. Install **Xcode** from the App Store (large — allow an hour). Open it once
-   and accept the licence.
-2. Double-click `ExpenseLogger.xcodeproj`.
-3. Click the blue **ExpenseLogger** icon at the top of the left sidebar ▸
-   **Signing & Capabilities**. Tick *Automatically manage signing*, add your
-   Apple Account under **Team**, and change **Bundle Identifier** from
-   `com.example.ExpenseLogger` to something unique of your own.
-4. Plug in the iPhone, unlock it, pick it in the device menu at the top, press
-   **▶**. On the phone: Settings ▸ General ▸ VPN & Device Management ▸ your
-   account ▸ **Trust**.
-5. In the app: **Settings** tab ▸ *Point at a file in iCloud Drive* ▸ choose
-   `expenses.txt`. The picker can also reach Google Drive if the Google Drive
-   app is installed on the iPhone.
+**The iPhone app** (`ExpenseLogger` folder) only displays a file that something
+else fills in — it cannot read bank notifications, and nothing on iOS can. It
+needs Xcode and, on a free Apple account, stops working every 7 days.
 
-If Xcode shows red errors, copy the first one and send it to me. This part has
-never been run on a real Mac, so errors here are expected and quick to fix.
+Both work and both are kept, so nothing is lost if your situation changes.
 
 ---
 
 ## If you get stuck
 
-Send a photo or copy of whatever the Terminal window says, and the step number
-you were on. That is normally enough to tell you exactly what to change.
+| What you see | What to do |
+| --- | --- |
+| "could not find the column headings" | Send me the first few rows of your statement. Quick to add. |
+| "old .xls files cannot be read" | Open in Numbers or Excel, save as `.xlsx` or `.csv`. |
+| "PDF statements cannot be read yet" | Look for an Excel/CSV option; if there is none, send me the PDF. |
+| Preview amounts look wrong | Type `n` so nothing is written, and send me what it printed. |
+| "nothing new to add" | Those rows were already imported. Check `expenses.csv`. |
+
+Send a copy of whatever the black window says, plus the first four or five rows
+of your statement including the headings. That is almost always enough.

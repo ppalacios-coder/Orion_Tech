@@ -1,6 +1,11 @@
 # Expense Logger
 
-An iPhone app that turns bank transaction alerts into a plain text file you own.
+Turns Banco Industrial transactions into a spending file you own.
+
+**Start with [START-HERE.md](START-HERE.md).** It covers the route that actually
+works for a carried MacBook: importing the Bi en Línea statement
+(`importer/`). The notification-capture pieces below are kept for a machine that
+stays awake, and are not the recommended path.
 
 Every alert it receives is parsed into amount, currency, merchant, card and
 timestamp, then appended as one line to `expenses.txt` in Files ▸ On My iPhone ▸
@@ -118,6 +123,8 @@ ExpenseLogger/            The iOS app (SwiftUI, iOS 17+)
   Views/                  Log, Test, Setup and Settings tabs
 Config/Info.plist         App metadata (kept out of the synchronized group)
 ExpenseLoggerTests/       XCTest suites
+importer/                 Statement → spending spreadsheet (the recommended route)
+  Import Statement.command  Double-click to import; no typing
 bridge/                   macOS notification bridge + reference parser (Python)
   install_launchagent.sh  Keeps the bridge running across reboots
 fixtures/samples.json     Parser corpus, shared by the Swift and Python tests
@@ -192,7 +199,8 @@ Available in Shortcuts once the app is installed:
 ## Tests
 
 ```bash
-python3 -m unittest discover -s bridge -t bridge -v   # parser + bridge, 15 tests
+python3 -m unittest discover -s bridge -t bridge -v      # parser + bridge, 22 tests
+python3 -m unittest discover -s importer -t importer -v  # statement importer, 21 tests
 xcodebuild test -scheme ExpenseLogger \
   -destination 'platform=iOS Simulator,name=iPhone 16'
 ```
