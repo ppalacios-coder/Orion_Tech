@@ -31,9 +31,70 @@ actually work:
 | **Real push notifications** → Mac bridge | Best-effort | A Mac awake and running iPhone Mirroring |
 | **Manual paste** | Always works | You, doing it |
 
-Most banks can send an SMS or email per transaction. Turning that on and using
-route 1 or 2 gets you the same result as intercepting the push, on-device, with
-no Mac involved. **Start there.**
+Most banks can send an SMS or email per transaction, and where that is offered
+route 1 is the best option — fully on-device, no Mac involved.
+
+**Banco Industrial is not one of them.** Its card alerts arrive through Apple
+Wallet and it offers no per-transaction SMS, so route 3 is the only automatic
+one. The setup below is written for that case.
+
+## Setup: Banco Industrial + a Mac
+
+**On the Mac, once — build and install the app**
+
+1. Open `ExpenseLogger.xcodeproj` in Xcode 16+.
+2. Target ▸ Signing & Capabilities: pick your team, change the bundle
+   identifier off `com.example.ExpenseLogger`.
+3. Run it on your iPhone. With a free Apple ID the app stops working after
+   7 days and needs reinstalling; a paid developer account gives you a year.
+
+**On the Mac — set the bridge running**
+
+4. Turn on iPhone Mirroring and let notifications forward to the Mac.
+5. Grant Full Disk Access to your terminal (System Settings ▸ Privacy &
+   Security ▸ Full Disk Access), then find which app posts your card alerts:
+
+   ```bash
+   python3 bridge/notification_bridge.py --list-apps
+   ```
+
+   Wallet alerts come from Wallet (`com.apple.Passbook`), not a BI app.
+
+6. Check what it would log before it writes anything:
+
+   ```bash
+   python3 bridge/notification_bridge.py \
+       --bundle-id com.apple.Passbook --once --dry-run --verbose
+   ```
+
+7. Install it as a LaunchAgent, writing into iCloud Drive so the file reaches
+   your phone:
+
+   ```bash
+   ./bridge/install_launchagent.sh --bundle-id com.apple.Passbook \
+       --out "$HOME/Library/Mobile Documents/com~apple~CloudDocs/expenses.txt"
+   ```
+
+   It starts immediately, restarts after a reboot, and logs to
+   `~/Library/Logs/expense-logger-bridge.log`.
+
+**On the iPhone — point the app at that file**
+
+8. Settings ▸ Where the log lives ▸ **Point at a file in iCloud Drive**, and
+   choose `expenses.txt`. Leave Format on tab-separated, which is what the
+   bridge writes.
+
+The app now shows the same log the Mac is writing, with totals, export and
+Siri. Deleting from within the app never touches that file.
+
+**What this does and does not get you**
+
+- Transactions are logged automatically while the Mac is awake with mirroring
+  connected. Alerts that arrive while it is asleep never reach the Mac and are
+  missed — reconcile those against Wallet's own transaction list on the card.
+- Notification Center's database is private and undocumented; a macOS update
+  can change it. If logging stops, check the bridge log first.
+- The Test tab is always there for anything you want to add by hand.
 
 ## Quick start
 
@@ -52,12 +113,13 @@ no Mac involved. **Start there.**
 ```
 ExpenseLogger/            The iOS app (SwiftUI, iOS 17+)
   Parsing/                Notification text → structured expense
-  Storage/                The log file, duplicate suppression, settings
+  Storage/                The log file (local or iCloud), dedupe, settings
   Intents/                App Intents — how Shortcuts talks to the app
   Views/                  Log, Test, Setup and Settings tabs
 Config/Info.plist         App metadata (kept out of the synchronized group)
 ExpenseLoggerTests/       XCTest suites
 bridge/                   macOS notification bridge + reference parser (Python)
+  install_launchagent.sh  Keeps the bridge running across reboots
 fixtures/samples.json     Parser corpus, shared by the Swift and Python tests
 docs/                     Trigger setup and parser tuning
 ```

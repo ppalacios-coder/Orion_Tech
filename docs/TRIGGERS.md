@@ -96,8 +96,27 @@ Writing into iCloud Drive as above means the file syncs back to your phone.
   Alerts that arrive while it is asleep are missed.
 - On first run it starts from the newest record, so it will not import history.
 
-To keep it running, use a LaunchAgent (`~/Library/LaunchAgents/`) with
-`RunAtLoad` and `KeepAlive` set.
+**Keeping it running**
+
+```bash
+./bridge/install_launchagent.sh --bundle-id com.apple.Passbook \
+    --out "$HOME/Library/Mobile Documents/com~apple~CloudDocs/expenses.txt"
+```
+
+That writes a LaunchAgent with `RunAtLoad` and `KeepAlive`, starts it, and logs
+to `~/Library/Logs/expense-logger-bridge.log`. Remove it with
+`./bridge/install_launchagent.sh --uninstall`.
+
+Note that launchd runs its own copy of `python3`, so Full Disk Access granted to
+your terminal does not cover it. If the log says it cannot read the database,
+grant Full Disk Access to the `python3` binary the installer printed.
+
+**Showing the same log on the phone**
+
+Write the file into iCloud Drive as above, then in the app: Settings ▸ Where the
+log lives ▸ *Point at a file in iCloud Drive*. The app keeps access to it across
+launches and reads it with file coordination, so it and iCloud's sync do not
+collide. Deleting from within the app leaves that file alone.
 
 ## 4. Manual capture
 

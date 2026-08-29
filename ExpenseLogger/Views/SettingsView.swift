@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @Bindable var store: LogStore
@@ -11,10 +12,35 @@ struct SettingsView: View {
     @AppStorage(AppSettings.Key.dedupeWindow) private var dedupeWindow = 120.0
 
     @State private var confirmingClear = false
+    @State private var choosingFile = false
+    /// nil means the app's own Documents folder.
+    @State private var externalFileName: String?
 
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    LabeledContent("Location", value: externalFileName ?? "In this app")
+                    Button {
+                        choosingFile = true
+                    } label: {
+                        Label("Point at a file in iCloud Drive…", systemImage: "icloud")
+                    }
+                    if externalFileName != nil {
+                        Button(role: .destructive) {
+                            LogLocation.forget()
+                            externalFileName = nil
+                            Task { await store.refresh() }
+                        } label: {
+                            Label("Go back to this app's folder", systemImage: "iphone")
+                        }
+                    }
+                } header: {
+                    Text("Where the log lives")
+                } footer: {
+                    Text("If the Mac bridge is doing the capturing, point this at the file it writes in iCloud Drive so the phone shows the same log. Run the bridge once first, so the file exists. Make sure Format below matches what the bridge writes.")
+                }
+
                 Section {
                     TextField("File name", text: $fileName)
                         .autocorrectionDisabled()
@@ -27,7 +53,9 @@ struct SettingsView: View {
                 } header: {
                     Text("Log file")
                 } footer: {
-                    Text("Saved in Files ▸ On My iPhone ▸ Expense Logger. Changing the format only affects new lines — start a new file if you switch.")
+                    Text(externalFileName == nil
+                         ? "Saved in Files ▸ On My iPhone ▸ Expense Logger. Changing the format only affects new lines — start a new file if you switch."
+                         : "The file name is only used for the app's own folder. Format still applies: it must match what the Mac bridge writes.")
                 }
 
                 Section {
@@ -78,12 +106,29 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .task { externalFileName = LogLocation.externalName }
+            .fileImporter(isPresented: $choosingFile, allowedContentTypes: [.data]) { result in
+                switch result {
+                case .success(let url):
+                    do {
+                        try LogLocation.remember(url)
+                        externalFileName = LogLocation.externalName
+                        Task { await store.refresh() }
+                    } catch {
+                        store.lastError = "Could not keep access to that file: \(error.localizedDescription)"
+                    }
+                case .failure(let error):
+                    store.lastError = error.localizedDescription
+                }
+            }
             .confirmationDialog("Delete the log file and start over?",
                                 isPresented: $confirmingClear, titleVisibility: .visible) {
                 Button("Delete", role: .destructive) { Task { await store.clear() } }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This cannot be undone. Export the file first if you want to keep it.")
+                Text(externalFileName == nil
+                     ? "This cannot be undone. Export the file first if you want to keep it."
+                     : "Only the app's own review file is deleted. The iCloud Drive log the Mac bridge writes is left alone.")
             }
         }
     }

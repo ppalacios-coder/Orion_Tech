@@ -43,11 +43,14 @@ actor ExpenseLog {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
 
+    /// The file the Mac bridge writes, when one has been chosen; otherwise the
+    /// app's own file in Documents.
     nonisolated var fileURL: URL {
-        documentsDirectory.appendingPathComponent(AppSettings.fileName)
+        LogLocation.externalURL() ?? documentsDirectory.appendingPathComponent(AppSettings.fileName)
     }
 
     /// Anything rejected lands here rather than disappearing.
+    /// Always local: rejected notifications are the app's own bookkeeping.
     nonisolated var reviewFileURL: URL {
         let name = AppSettings.fileName
         let base = (name as NSString).deletingPathExtension
@@ -93,13 +96,45 @@ actor ExpenseLog {
 
     private func appendToReview(_ expense: ParsedExpense, format: LogFormat) throws {
         guard AppSettings.keepRejected else { return }
+        let url = reviewFileURL
         let reason = expense.reason ?? expense.kind.rawValue
         let line = "\(LogLine.timestamp(expense.receivedAt))\t[\(expense.kind.rawValue):\(reason)]\t" +
             expense.raw.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
-        try appendLine(line, to: reviewFileURL, header: nil)
+        try Self.rawAppend(line, to: url, header: nil)
+    }
+
+    /// Wraps file work in a security scope and NSFileCoordinator when the file
+    /// is outside the sandbox. Plain file access is used for our own Documents.
+    private func coordinated<T>(_ url: URL, writing: Bool, _ body: (URL) throws -> T) throws -> T {
+        guard LogLocation.isExternal else { return try body(url) }
+
+        return try LogLocation.withAccess(url) {
+            var result: T?
+            var thrown: Error?
+            var coordinationError: NSError?
+            let coordinator = NSFileCoordinator()
+            let handler: (URL) -> Void = { actual in
+                do { result = try body(actual) } catch { thrown = error }
+            }
+            if writing {
+                coordinator.coordinate(writingItemAt: url, options: [], error: &coordinationError, byAccessor: handler)
+            } else {
+                coordinator.coordinate(readingItemAt: url, options: [], error: &coordinationError, byAccessor: handler)
+            }
+            if let thrown { throw thrown }
+            if let coordinationError { throw coordinationError }
+            guard let result else { throw LogError.cannotWrite(url.lastPathComponent) }
+            return result
+        }
     }
 
     private func appendLine(_ line: String, to url: URL, header: String?) throws {
+        try coordinated(url, writing: true) { target in
+            try Self.rawAppend(line, to: target, header: header)
+        }
+    }
+
+    private static func rawAppend(_ line: String, to url: URL, header: String?) throws {
         let fileManager = FileManager.default
 
         if !fileManager.fileExists(atPath: url.path) {
@@ -150,7 +185,12 @@ actor ExpenseLog {
     // MARK: - Reading
 
     func rawContents() -> String {
-        (try? String(contentsOf: fileURL, encoding: .utf8)) ?? ""
+        let url = fileURL
+        if LogLocation.isExternal { LogLocation.requestDownloadIfNeeded(url) }
+        let read = try? coordinated(url, writing: false) { target in
+            (try? String(contentsOf: target, encoding: .utf8)) ?? ""
+        }
+        return read ?? ""
     }
 
     func entries(limit: Int = 500) -> [LoggedEntry] {
@@ -172,8 +212,12 @@ actor ExpenseLog {
 
     // MARK: - Maintenance
 
+    /// Only ever deletes files the app owns — an external log chosen by the
+    /// user is left alone, since the Mac bridge is still writing to it.
     func clear() throws {
-        for url in [fileURL, reviewFileURL] where FileManager.default.fileExists(atPath: url.path) {
+        var owned = [reviewFileURL]
+        if !LogLocation.isExternal { owned.append(fileURL) }
+        for url in owned where FileManager.default.fileExists(atPath: url.path) {
             try FileManager.default.removeItem(at: url)
         }
         try? FileManager.default.removeItem(at: dedupeStoreURL)
