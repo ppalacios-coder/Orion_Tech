@@ -1,5 +1,9 @@
 # Expense Logger
 
+> **Status: stopped, August 2026.** Not in use, and nothing here was ever
+> installed or run against a real account. Left in place in case it is useful
+> later. The short version of why is in [POSTMORTEM.md](POSTMORTEM.md).
+
 Turns Banco Industrial transactions into a spending file you own.
 
 **Start with [START-HERE.md](START-HERE.md).** It covers the route that actually
