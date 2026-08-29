@@ -64,7 +64,7 @@ enum LogLine {
             let data = try? JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys])
             return data.flatMap { String(data: $0, encoding: .utf8) } ?? fields[7]
         case .plain:
-            let symbol = ExpenseParser.symbols.first { $0.value == expense.currency }?.key
+            let symbol = ExpenseParser.symbols.first(where: { $0.value == expense.currency })?.key
             let money = expense.amount.map { amount -> String in
                 symbol.map { "\($0)\(amountString(amount))" }
                     ?? "\(amountString(amount)) \(expense.currency ?? "")"

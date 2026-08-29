@@ -49,19 +49,19 @@ enum LogFormat: String, CaseIterable, Identifiable, Sendable {
 
     var displayName: String {
         switch self {
-        case .tsv: "Tab-separated (recommended)"
-        case .csv: "CSV (spreadsheet)"
-        case .jsonl: "JSON Lines"
-        case .plain: "Plain readable text"
+        case .tsv: return "Tab-separated (recommended)"
+        case .csv: return "CSV (spreadsheet)"
+        case .jsonl: return "JSON Lines"
+        case .plain: return "Plain readable text"
         }
     }
 
     /// Header line written when the file is first created, if the format has one.
     var header: String? {
         switch self {
-        case .tsv: "timestamp\tamount\tcurrency\tmerchant\tcard\tsource\tconfidence\traw"
-        case .csv: "timestamp,amount,currency,merchant,card,source,confidence,raw"
-        case .jsonl, .plain: nil
+        case .tsv: return "timestamp\tamount\tcurrency\tmerchant\tcard\tsource\tconfidence\traw"
+        case .csv: return "timestamp,amount,currency,merchant,card,source,confidence,raw"
+        case .jsonl, .plain: return nil
         }
     }
 }

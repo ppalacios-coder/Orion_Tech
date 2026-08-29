@@ -9,7 +9,8 @@
 #       --out "$HOME/Library/Mobile Documents/com~apple~CloudDocs/expenses.txt"
 #   ./install_launchagent.sh --uninstall
 
-set -euo pipefail
+# macOS ships bash 3.2, where an empty array under "set -u" is an error.
+set -eo pipefail
 
 LABEL="com.expenselogger.bridge"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
@@ -17,7 +18,8 @@ LOG_DIR="$HOME/Library/Logs"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BRIDGE="$SCRIPT_DIR/notification_bridge.py"
 
-BUNDLE_IDS=()
+BUNDLE_IDS=""
+BUNDLE_COUNT=0
 OUT="$HOME/Library/Mobile Documents/com~apple~CloudDocs/expenses.txt"
 CURRENCY="GTQ"
 FORMAT="tsv"
@@ -26,7 +28,8 @@ UNINSTALL=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --bundle-id) BUNDLE_IDS+=("$2"); shift 2 ;;
+        --bundle-id) BUNDLE_IDS="$BUNDLE_IDS$2
+"; BUNDLE_COUNT=$((BUNDLE_COUNT + 1)); shift 2 ;;
         --out)       OUT="$2"; shift 2 ;;
         --currency)  CURRENCY="$2"; shift 2 ;;
         --format)    FORMAT="$2"; shift 2 ;;
@@ -55,7 +58,7 @@ if [ ! -f "$BRIDGE" ]; then
     exit 1
 fi
 
-if [ ${#BUNDLE_IDS[@]} -eq 0 ]; then
+if [ "$BUNDLE_COUNT" -eq 0 ]; then
     echo "error: pass at least one --bundle-id (find yours with:" >&2
     echo "       python3 \"$BRIDGE\" --list-apps)" >&2
     exit 2
@@ -88,7 +91,8 @@ mkdir -p "$(dirname "$PLIST")" "$LOG_DIR"
 		<string>--interval</string>
 		<string>$(esc "$INTERVAL")</string>
 HEADER
-    for id in "${BUNDLE_IDS[@]}"; do
+    printf '%s' "$BUNDLE_IDS" | while IFS= read -r id; do
+        [ -z "$id" ] && continue
         printf '\t\t<string>--bundle-id</string>\n\t\t<string>%s</string>\n' "$(esc "$id")"
     done
     cat <<FOOTER
@@ -113,7 +117,7 @@ launchctl bootstrap "gui/$(id -u)" "$PLIST"
 
 echo "installed $LABEL"
 echo "  writes  : $OUT"
-echo "  watching: ${BUNDLE_IDS[*]}"
+echo "  watching: $(printf '%s' "$BUNDLE_IDS" | tr '\n' ' ')"
 echo "  log     : $LOG_DIR/expense-logger-bridge.log"
 echo
 echo "The terminal running it needs Full Disk Access — and so does launchd's copy."

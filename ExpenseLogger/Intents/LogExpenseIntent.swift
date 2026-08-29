@@ -1,6 +1,5 @@
 import AppIntents
 import Foundation
-import UniformTypeIdentifiers
 
 /// The main entry point for automations: hand it the text of a bank
 /// notification (or SMS/email body) and it parses and appends it to the log.
@@ -98,8 +97,7 @@ struct ExpenseLogFileIntent: AppIntent {
         guard FileManager.default.fileExists(atPath: url.path) else {
             throw ExpenseLogIntentError.emptyLog
         }
-        let file = try IntentFile(fileURL: url, filename: url.lastPathComponent, type: .plainText)
-        return .result(value: file)
+        return .result(value: IntentFile(fileURL: url))
     }
 }
 
@@ -107,7 +105,7 @@ enum ExpenseLogIntentError: LocalizedError {
     case emptyLog
     var errorDescription: String? {
         switch self {
-        case .emptyLog: "Nothing has been logged yet."
+        case .emptyLog: return "Nothing has been logged yet."
         }
     }
 }

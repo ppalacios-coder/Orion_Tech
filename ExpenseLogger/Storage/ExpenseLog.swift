@@ -18,11 +18,11 @@ actor ExpenseLog {
 
         var summary: String {
             switch self {
-            case .logged(let line): "Logged: \(line)"
-            case .duplicate: "Duplicate — already logged"
-            case .lowConfidence(let value): "Low confidence (\(String(format: "%.2f", value))) — sent to review"
-            case .ignored(let reason): "Ignored (\(reason))"
-            case .unparsed(let reason): "Could not read an amount (\(reason))"
+            case .logged(let line): return "Logged: \(line)"
+            case .duplicate: return "Duplicate — already logged"
+            case .lowConfidence(let value): return "Low confidence (\(String(format: "%.2f", value))) — sent to review"
+            case .ignored(let reason): return "Ignored (\(reason))"
+            case .unparsed(let reason): return "Could not read an amount (\(reason))"
             }
         }
     }
@@ -31,7 +31,7 @@ actor ExpenseLog {
         case cannotWrite(String)
         var errorDescription: String? {
             switch self {
-            case .cannotWrite(let path): "Could not write to \(path)"
+            case .cannotWrite(let path): return "Could not write to \(path)"
             }
         }
     }
@@ -89,7 +89,7 @@ actor ExpenseLog {
         if isDuplicate(expense) { return .duplicate }
 
         let line = LogLine.render(expense, format: format)
-        try appendLine(line, to: fileURL, header: format.header)
+        try appendToLog(line, header: format.header)
         remember(expense)
         return .logged(line: line)
     }
@@ -103,34 +103,38 @@ actor ExpenseLog {
         try Self.rawAppend(line, to: url, header: nil)
     }
 
-    /// Wraps file work in a security scope and NSFileCoordinator when the file
-    /// is outside the sandbox. Plain file access is used for our own Documents.
-    private func coordinated<T>(_ url: URL, writing: Bool, _ body: (URL) throws -> T) throws -> T {
-        guard LogLocation.isExternal else { return try body(url) }
-
-        return try LogLocation.withAccess(url) {
-            var result: T?
-            var thrown: Error?
+    /// Reads a file outside the sandbox, through its security scope and with
+    /// file coordination so it does not clash with iCloud's syncing.
+    private func readExternal(_ url: URL) -> String {
+        var text = ""
+        LogLocation.withAccess(url) {
             var coordinationError: NSError?
-            let coordinator = NSFileCoordinator()
-            let handler: (URL) -> Void = { actual in
-                do { result = try body(actual) } catch { thrown = error }
+            NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordinationError) { actual in
+                text = (try? String(contentsOf: actual, encoding: .utf8)) ?? ""
             }
-            if writing {
-                coordinator.coordinate(writingItemAt: url, options: [], error: &coordinationError, byAccessor: handler)
-            } else {
-                coordinator.coordinate(readingItemAt: url, options: [], error: &coordinationError, byAccessor: handler)
-            }
-            if let thrown { throw thrown }
-            if let coordinationError { throw coordinationError }
-            guard let result else { throw LogError.cannotWrite(url.lastPathComponent) }
-            return result
         }
+        return text
     }
 
-    private func appendLine(_ line: String, to url: URL, header: String?) throws {
-        try coordinated(url, writing: true) { target in
-            try Self.rawAppend(line, to: target, header: header)
+    /// Appends to a file outside the sandbox, same protections as `readExternal`.
+    private func writeExternal(_ line: String, to url: URL, header: String?) throws {
+        var thrown: Error?
+        var coordinationError: NSError?
+        LogLocation.withAccess(url) {
+            NSFileCoordinator().coordinate(writingItemAt: url, options: [], error: &coordinationError) { actual in
+                do { try Self.rawAppend(line, to: actual, header: header) } catch { thrown = error }
+            }
+        }
+        if let thrown { throw thrown }
+        if let coordinationError { throw coordinationError }
+    }
+
+    private func appendToLog(_ line: String, header: String?) throws {
+        let url = fileURL
+        if LogLocation.isExternal {
+            try writeExternal(line, to: url, header: header)
+        } else {
+            try Self.rawAppend(line, to: url, header: header)
         }
     }
 
@@ -186,11 +190,11 @@ actor ExpenseLog {
 
     func rawContents() -> String {
         let url = fileURL
-        if LogLocation.isExternal { LogLocation.requestDownloadIfNeeded(url) }
-        let read = try? coordinated(url, writing: false) { target in
-            (try? String(contentsOf: target, encoding: .utf8)) ?? ""
+        guard LogLocation.isExternal else {
+            return (try? String(contentsOf: url, encoding: .utf8)) ?? ""
         }
-        return read ?? ""
+        LogLocation.requestDownloadIfNeeded(url)
+        return readExternal(url)
     }
 
     func entries(limit: Int = 500) -> [LoggedEntry] {

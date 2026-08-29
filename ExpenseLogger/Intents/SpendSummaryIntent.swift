@@ -16,20 +16,20 @@ enum SummaryPeriod: String, AppEnum {
     /// titles are `LocalizedStringResource` and do not interpolate cleanly.
     var label: String {
         switch self {
-        case .today: "Today"
-        case .week: "This week"
-        case .month: "This month"
-        case .all: "All time"
+        case .today: return "Today"
+        case .week: return "This week"
+        case .month: return "This month"
+        case .all: return "All time"
         }
     }
 
     /// Start of the period, or nil for all time.
     func startDate(now: Date = Date(), calendar: Calendar = .current) -> Date? {
         switch self {
-        case .today: calendar.startOfDay(for: now)
-        case .week: calendar.dateInterval(of: .weekOfYear, for: now)?.start
-        case .month: calendar.dateInterval(of: .month, for: now)?.start
-        case .all: nil
+        case .today: return calendar.startOfDay(for: now)
+        case .week: return calendar.dateInterval(of: .weekOfYear, for: now)?.start
+        case .month: return calendar.dateInterval(of: .month, for: now)?.start
+        case .all: return nil
         }
     }
 }
