@@ -108,18 +108,51 @@ ok "Watching $BUNDLE_ID"
 echo
 bold "Where should the file be saved?"
 echo
-if [ -d "$ICLOUD" ]; then
-    OUT="$ICLOUD/expenses.txt"
-    echo "  Saving to iCloud Drive, so you can open it on your iPhone too:"
-    echo "  $OUT"
-else
+
+# Look for the cloud folders this Mac actually has. Google Drive has used
+# several locations over the years, so check all of them.
+LOCATIONS=""
+LOC_COUNT=0
+add_location() {
+    [ -d "$1" ] || return 0
+    LOC_COUNT=$((LOC_COUNT + 1))
+    LOCATIONS="$LOCATIONS$1
+"
+    printf "  %2d) %s\n" "$LOC_COUNT" "$2"
+}
+
+for gd in "$HOME"/Library/CloudStorage/GoogleDrive-*/My\ Drive; do
+    add_location "$gd" "Google Drive  ($(basename "$(dirname "$gd")" | sed 's/GoogleDrive-//'))"
+done
+add_location "/Volumes/GoogleDrive/My Drive" "Google Drive  (older setup)"
+add_location "$HOME/Google Drive/My Drive"   "Google Drive  (older setup)"
+add_location "$HOME/Google Drive"            "Google Drive  (older setup)"
+add_location "$ICLOUD"                       "iCloud Drive"
+add_location "$HOME/Documents"               "Documents folder on this Mac"
+
+if [ "$LOC_COUNT" -eq 0 ]; then
     OUT="$HOME/Documents/expenses.txt"
-    dim "  iCloud Drive is not set up on this Mac, so using your Documents folder:"
-    echo "  $OUT"
+    dim "  No cloud folders found, so using: $OUT"
+else
+    echo
+    read -r -p "Type a number, or paste a different folder path: " LOC_CHOICE
+    if [[ "$LOC_CHOICE" =~ ^[0-9]+$ ]] && [ "$LOC_CHOICE" -ge 1 ] && [ "$LOC_CHOICE" -le "$LOC_COUNT" ]; then
+        CHOSEN="$(printf '%s' "$LOCATIONS" | sed -n "${LOC_CHOICE}p")"
+        OUT="$CHOSEN/expenses.txt"
+    elif [ -n "$LOC_CHOICE" ]; then
+        OUT="${LOC_CHOICE%/}/expenses.txt"
+    else
+        CHOSEN="$(printf '%s' "$LOCATIONS" | sed -n "1p")"
+        OUT="$CHOSEN/expenses.txt"
+    fi
+fi
+
+if [ ! -d "$(dirname "$OUT")" ]; then
+    bad "That folder does not exist: $(dirname "$OUT")"
+    pause_and_exit 1
 fi
 echo
-read -r -p "Press Return to accept, or type a different full path: " CUSTOM
-[ -n "$CUSTOM" ] && OUT="$CUSTOM"
+ok "Saving to $OUT"
 
 # -------------------------------------------------------------------- dry run
 echo

@@ -125,3 +125,33 @@ class BridgeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WriteFailureTests(unittest.TestCase):
+    """A cloud folder that is not there must not cost you a purchase."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+        self.db = self.dir / "db"
+        self.addCleanup(self.tmp.cleanup)
+
+    def test_unwritable_destination_keeps_the_record_for_next_time(self):
+        make_db(self.db, [(BANK, "BBVA", "Compra de 10,00 EUR en DIA")])
+        # A regular file standing where a folder should be: the write fails for
+        # any user, which a permissions trick would not guarantee.
+        blocker = self.dir / "blocked"
+        blocker.write_text("not a folder")
+        state = {"last_rec_id": 0}
+
+        args = make_args(self.db, blocker / "expenses.txt")
+        self.assertEqual(nb.process_once(args, state), 0)
+        self.assertEqual(state["last_rec_id"], 0, "the record must be retried, not skipped")
+
+    def test_the_record_is_logged_once_the_folder_works_again(self):
+        make_db(self.db, [(BANK, "BBVA", "Compra de 10,00 EUR en DIA")])
+        good = self.dir / "expenses.txt"
+        state = {"last_rec_id": 0}
+        self.assertEqual(nb.process_once(make_args(self.db, good), state), 1)
+        self.assertEqual(state["last_rec_id"], 1)
+        self.assertIn("DIA", good.read_text())

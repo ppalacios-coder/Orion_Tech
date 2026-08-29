@@ -56,7 +56,8 @@ type `/System/Applications/Utilities`, pick Terminal. Quit Terminal
 
 **6. Answer three questions.**
 - Which app sends the alerts → pick **`com.apple.Passbook`** (Apple Wallet).
-- Where to save → press Return for iCloud Drive.
+- Where to save → it lists the cloud folders this Mac has. Pick the number
+  next to **Google Drive**.
 - It prints the purchases it *would* record. If they look right, type `y`.
 
 If those preview lines look wrong, close the window and send them to me.
@@ -66,8 +67,9 @@ Setup prints a path like `/usr/bin/python3` and copies it. Add it to the same
 Full Disk Access list: **+**, Command-Shift-G, Command-V, Return, switch on.
 
 **8. Check it.**
-Make a small purchase. Within ~15 seconds, Finder ▸ iCloud Drive ▸
-`expenses.txt` should end with that purchase.
+Make a small purchase. Within ~15 seconds, open your Google Drive folder and
+`expenses.txt` should end with that purchase. It appears in Google Drive on the
+web and on your phone too, once Drive syncs it.
 
 Done. It restarts by itself when the Mac turns on.
 
@@ -105,7 +107,8 @@ you are finished.
    **▶**. On the phone: Settings ▸ General ▸ VPN & Device Management ▸ your
    account ▸ **Trust**.
 5. In the app: **Settings** tab ▸ *Point at a file in iCloud Drive* ▸ choose
-   `expenses.txt`.
+   `expenses.txt`. The picker can also reach Google Drive if the Google Drive
+   app is installed on the iPhone.
 
 If Xcode shows red errors, copy the first one and send it to me. This part has
 never been run on a real Mac, so errors here are expected and quick to fix.

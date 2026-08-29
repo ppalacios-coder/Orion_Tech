@@ -174,10 +174,13 @@ def process_once(args, state: dict) -> int:
     written = 0
     out_path = Path(args.out).expanduser()
 
+    def remember(record_id):
+        state["last_rec_id"] = max(int(record_id), int(state.get("last_rec_id", 0)))
+
     for rec_id, identifier, blob, delivered in rows:
-        state["last_rec_id"] = max(int(rec_id), int(state.get("last_rec_id", 0)))
         title, subtitle, body = decode_record(blob)
         if not any((title, subtitle, body)):
+            remember(rec_id)
             continue
 
         parsed = ep.parse_notification(
@@ -192,15 +195,25 @@ def process_once(args, state: dict) -> int:
         if parsed.kind not in ("expense", "credit"):
             if args.verbose:
                 print(f"skip [{parsed.kind}:{parsed.reason}] {parsed.raw[:70]!r}")
+            remember(rec_id)
             continue
 
         line = ep.format_line(parsed, args.format)
         if args.dry_run:
             print(f"would log: {line}")
         else:
-            append_line(out_path, line, ep.HEADERS.get(args.format))
+            try:
+                append_line(out_path, line, ep.HEADERS.get(args.format))
+            except OSError as exc:
+                # Cloud folders come and go — Google Drive may not be running, or
+                # the file may not be downloaded yet. Stop here without marking
+                # this notification as seen, so the next poll picks it up again
+                # rather than losing the purchase.
+                print(f"error: cannot write to {out_path} ({exc}). Will retry.", file=sys.stderr)
+                return written
             if args.verbose:
                 print(f"logged: {line}")
+        remember(rec_id)
         written += 1
 
     return written
@@ -251,7 +264,11 @@ def main() -> int:
 
     try:
         while True:
-            count = process_once(args, state)
+            try:
+                count = process_once(args, state)
+            except Exception as exc:                    # noqa: BLE001 - keep running
+                print(f"error: {exc!r}; retrying in {args.interval}s", file=sys.stderr)
+                count = 0
             if not args.dry_run:
                 save_state(state_path, state)
             if args.once:
